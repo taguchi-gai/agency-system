@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>除菌消臭 事業管理システム（モック v2）</title>
+<style>
+  :root {
+    --primary: #1a6fb0;
+    --primary-dark: #135a91;
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #2c3e50;
+    --muted: #7f8c9b;
+    --border: #e3e8ee;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --purple: #8e44ad;
+    --sidebar-w: 230px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* ===== ログイン画面 ===== */
+  #login-screen {
+    position: fixed; inset: 0; background: linear-gradient(135deg, #20304a, #1a6fb0);
+    display: flex; align-items: center; justify-content: center; z-index: 500;
+  }
+  .login-box { background: #fff; border-radius: 14px; padding: 36px 40px; width: 420px; max-width: 92vw; }
+  .login-box h1 { font-size: 18px; text-align: center; }
+  .login-box .sub { text-align: center; color: var(--muted); font-size: 12px; margin: 6px 0 24px; }
+  .role-btn {
+    display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px; margin-bottom: 10px;
+    border: 1px solid var(--border); border-radius: 10px; background: #fff; cursor: pointer; font-size: 14px;
+    text-align: left; transition: all .15s;
+  }
+  .role-btn:hover { border-color: var(--primary); background: #f2f8fd; }
+  .role-btn .icon { font-size: 22px; }
+  .role-btn b { display: block; }
+  .role-btn small { color: var(--muted); font-size: 11px; }
+  .login-select { margin-top: 4px; margin-bottom: 14px; }
+  .login-select select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+
+  /* ===== レイアウト ===== */
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+    background: #20304a; color: #fff; padding: 16px 0; overflow-y: auto; display: flex; flex-direction: column;
+  }
+  .sidebar h1 { font-size: 14px; padding: 8px 18px 14px; border-bottom: 1px solid rgba(255,255,255,.15); }
+  .sidebar h1 small { display: block; font-size: 10px; color: #9db4d0; font-weight: normal; margin-top: 4px; }
+  .role-banner { padding: 10px 18px; font-size: 11px; background: rgba(255,255,255,.07); border-bottom: 1px solid rgba(255,255,255,.1); }
+  .role-banner b { display: block; font-size: 13px; margin-top: 2px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 18px; cursor: pointer; color: #c5d3e6; transition: background .15s; font-size: 13px; }
+  .nav-item:hover { background: rgba(255,255,255,.08); }
+  .nav-item.active { background: var(--primary); color: #fff; }
+  .logout { margin-top: auto; padding: 14px 18px; color: #9db4d0; cursor: pointer; font-size: 12px; border-top: 1px solid rgba(255,255,255,.1); }
+  .logout:hover { color: #fff; }
+  .main { margin-left: var(--sidebar-w); padding: 24px 28px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-title { font-size: 20px; margin-bottom: 4px; }
+  .page-desc { color: var(--muted); margin-bottom: 20px; font-size: 13px; }
+
+  /* ===== 部品 ===== */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .cards-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .stat-label { font-size: 12px; color: var(--muted); }
+  .stat-value { font-size: 25px; font-weight: bold; margin-top: 6px; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; color: var(--muted); padding: 10px 12px; border-bottom: 2px solid var(--border); white-space: nowrap; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:hover td { background: #f8fafc; }
+  .clickable { cursor: pointer; }
+  .link { color: var(--primary); cursor: pointer; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+  .b-blue { background: #eaf2fb; color: var(--primary); }
+  .b-green { background: #e8f8ef; color: var(--success); }
+  .b-orange { background: #fef5e7; color: var(--warning); }
+  .b-red { background: #fdecea; color: var(--danger); }
+  .b-purple { background: #f0eafb; color: var(--purple); }
+  .b-gray { background: #eef1f5; color: var(--muted); }
+
+  .btn { display: inline-block; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-sm { padding: 4px 12px; font-size: 12px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
+  .toolbar input[type=text], .toolbar select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: #fff; }
+
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(20,30,50,.45); z-index: 100; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+  .modal-bg.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 640px; padding: 24px 28px; }
+  .modal h2 { font-size: 17px; margin-bottom: 18px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group label { font-size: 12px; color: var(--muted); font-weight: bold; }
+  .form-group input, .form-group select, .form-group textarea { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 16px; }
+  .detail-item { padding: 6px 0; border-bottom: 1px dashed var(--border); }
+  .detail-item .k { font-size: 11px; color: var(--muted); }
+  .detail-item .v { font-size: 14px; margin-top: 2px; }
+  .section-title { font-size: 14px; font-weight: bold; margin: 18px 0 10px; padding-left: 8px; border-left: 3px solid var(--primary); }
+
+  .alert { padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+  .alert-warn { background: #fef5e7; color: #b9770e; }
+  .alert-danger { background: #fdecea; color: #c0392b; }
+  .alert-info { background: #eaf2fb; color: var(--primary-dark); }
+
+  .flow-steps { display: flex; gap: 0; margin: 8px 0 18px; flex-wrap: wrap; }
+  .flow-step { padding: 7px 22px 7px 28px; background: #eef1f5; color: var(--muted); font-size: 12px; font-weight: bold; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%); }
+  .flow-step.done { background: var(--primary); color: #fff; }
+
+  .proto-note { font-size: 11px; color: #9db4d0; padding: 12px 18px; }
+
+  /* ===== 注文フォーム（お客さま向け） ===== */
+  .customer-form-wrap { max-width: 520px; margin: 0 auto; }
+  .qr-banner { background: #fff; border: 2px dashed var(--primary); border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; }
+  .qr-banner b { color: var(--primary); }
+  .two-col { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: start; }
+  @media (max-width: 1000px) { .two-col { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ===== ログイン画面（ロール選択） ===== -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>🚗 除菌消臭 事業管理システム</h1>
+    <div class="sub">モック v2 — ログインするロールを選んでください（実際はID/パスワード認証）</div>
+    <div id="role-select-area"></div>
+  </div>
+</div>
+
+<!-- ===== サイドバー ===== -->
+<nav class="sidebar" id="sidebar" style="display:none">
+  <h1>🚗 除菌消臭 事業管理<small>モック v2</small></h1>
+  <div class="role-banner" id="role-banner"></div>
+  <div id="nav-area"></div>
+  <div class="proto-note">※ モックです。データはブラウザ内サンプル（リロードで初期化）</div>
+  <div class="logout" onclick="logout()">⏻ ログアウト（ロール切替）</div>
+</nav>
+
+<main class="main" id="main" style="display:none"></main>
+
+<div class="modal-bg" id="modal-bg"><div class="modal" id="modal-content"></div></div>
+
+<script>
+// =====================================================
+// サンプルデータ
+// =====================================================
+const TODAY = "2026-06-11";
+
+// 加盟店（最初は10社目標 → サンプル3社）
+let franchises = [
+  { id: 1, name: "株式会社オートライフ関東", contact: "山田 太郎", tel: "03-1234-5678", region: "関東", contractDate: "2026-02-01", renewDate: "2027-01-31", target: 300 },
+  { id: 2, name: "西日本カーネット株式会社", contact: "佐藤 花子", tel: "06-9876-5432", region: "関西", contractDate: "2026-03-15", renewDate: "2027-03-14", target: 300 },
+  { id: 3, name: "中部モビリティパートナーズ", contact: "鈴木 一郎", tel: "052-111-2222", region: "中部", contractDate: "2026-05-01", renewDate: "2027-04-30", target: 300 },
+];
+
+// 取次店（加盟店に紐づく / 中古車販売・パーツ店など）
+let shops = [
+  { id: 1, code: "SHOP-0001", name: "中古車センターつくば", franchiseId: 1, type: "中古車販売", contact: "田村 隆", tel: "029-111-1111", region: "茨城県", status: "稼働中", joined: "2026-03-01" },
+  { id: 2, code: "SHOP-0002", name: "カーパーツ大宮", franchiseId: 1, type: "パーツ販売", contact: "小林 誠", tel: "048-222-2222", region: "埼玉県", status: "稼働中", joined: "2026-03-10" },
+  { id: 3, code: "SHOP-0003", name: "横浜オートガレージ", franchiseId: 1, type: "中古車販売", contact: "中村 良太", tel: "045-333-3333", region: "神奈川県", status: "稼働中", joined: "2026-04-02" },
+  { id: 4, code: "SHOP-0004", name: "なにわ中古車市場", franchiseId: 2, type: "中古車販売", contact: "藤井 健", tel: "06-444-4444", region: "大阪府", status: "稼働中", joined: "2026-04-20" },
+  { id: 5, code: "SHOP-0005", name: "神戸カー用品館", franchiseId: 2, type: "パーツ販売", contact: "井上 翔", tel: "078-555-5555", region: "兵庫県", status: "稼働中", joined: "2026-05-08" },
+  { id: 6, code: "SHOP-0006", name: "名古屋カーセレクト", franchiseId: 3, type: "中古車販売", contact: "加藤 大輔", tel: "052-666-6666", region: "愛知県", status: "準備中", joined: "2026-06-01" },
+];
+
+// 施工代理店
+let contractors = [
+  { id: 1, name: "クリーンカーワークス東京", contact: "高橋 健", tel: "03-7777-1111", region: "関東", areas: "東京・埼玉・千葉", status: "稼働中", contractDate: "2026-02-15", renewDate: "2027-02-14" },
+  { id: 2, name: "茨城デタールサービス", contact: "渡辺 修", tel: "029-888-2222", region: "関東", areas: "茨城・栃木", status: "稼働中", contractDate: "2026-03-01", renewDate: "2027-02-28" },
+  { id: 3, name: "関西施工サービス", contact: "松本 浩", tel: "06-999-3333", region: "関西", areas: "大阪・兵庫・京都", status: "稼働中", contractDate: "2026-04-01", renewDate: "2027-03-31" },
+  { id: 4, name: "東海カークリーン", contact: "山口 哲", tel: "052-000-4444", region: "中部", areas: "愛知・岐阜・三重", status: "稼働中", contractDate: "2026-05-15", renewDate: "2027-05-14" },
+];
+
+// 施工注文（取次店経由でお客さまから入る注文）
+const SO_STATUS = ["新規受付", "施工店確認中", "施工日確定", "施工完了"];
+let serviceOrders = [
+  { id: "SO-0008", date: "2026-06-10", shopId: 1, customer: "斎藤 様", customerTel: "090-1111-2222", car: "トヨタ アルファード", desire: "2026-06-18", status: "新規受付", contractorId: null, scheduled: null, note: "ペット臭が気になるとのこと" },
+  { id: "SO-0007", date: "2026-06-09", shopId: 4, customer: "岡本 様", customerTel: "080-3333-4444", car: "ホンダ N-BOX", desire: "2026-06-15", status: "施工店確認中", contractorId: 3, scheduled: null, note: "タバコ臭" },
+  { id: "SO-0006", date: "2026-06-07", shopId: 2, customer: "三浦 様", customerTel: "070-5555-6666", car: "日産 セレナ", desire: "2026-06-14", status: "施工日確定", contractorId: 1, scheduled: "2026-06-14", note: "" },
+  { id: "SO-0005", date: "2026-06-03", shopId: 1, customer: "原田 様", customerTel: "090-7777-8888", car: "スバル フォレスター", desire: "2026-06-08", status: "施工完了", contractorId: 2, scheduled: "2026-06-08", note: "" },
+  { id: "SO-0004", date: "2026-05-28", shopId: 5, customer: "村上 様", customerTel: "080-9999-0000", car: "マツダ CX-5", desire: "2026-06-02", status: "施工完了", contractorId: 3, scheduled: "2026-06-02", note: "" },
+  { id: "SO-0003", date: "2026-05-20", shopId: 3, customer: "石川 様", customerTel: "090-1212-3434", car: "トヨタ プリウス", desire: "2026-05-26", status: "施工完了", contractorId: 1, scheduled: "2026-05-26", note: "" },
+  { id: "SO-0002", date: "2026-05-12", shopId: 2, customer: "近藤 様", customerTel: "080-5656-7878", car: "スズキ スペーシア", desire: "2026-05-18", status: "施工完了", contractorId: 1, scheduled: "2026-05-18", note: "" },
+  { id: "SO-0001", date: "2026-05-02", shopId: 4, customer: "遠藤 様", customerTel: "070-9090-1212", car: "BMW 3シリーズ", desire: "2026-05-10", status: "施工完了", contractorId: 3, scheduled: "2026-05-10", note: "" },
+];
+
+// 消耗品（除菌消臭剤）
+let products = [
+  { id: 1, name: "除菌消臭剤 施工用 1L", price: 3200, stock: 240 },
+  { id: 2, name: "除菌消臭剤 施工用 4L", price: 11000, stock: 80 },
+  { id: 3, name: "仕上げ用コーティングミスト 500ml", price: 1800, stock: 65 },
+];
+
+// 消耗品注文（施工代理店 → 本部）
+let supplyOrders = [
+  { id: "PO-0005", date: "2026-06-09", contractorId: 1, productId: 2, qty: 6, status: "受注", paid: "未入金" },
+  { id: "PO-0004", date: "2026-06-05", contractorId: 3, productId: 1, qty: 12, status: "出荷済", paid: "入金済" },
+  { id: "PO-0003", date: "2026-05-22", contractorId: 2, productId: 1, qty: 10, status: "出荷済", paid: "入金済" },
+  { id: "PO-0002", date: "2026-05-15", contractorId: 1, productId: 1, qty: 20, status: "出荷済", paid: "入金済" },
+  { id: "PO-0001", date: "2026-05-01", contractorId: 4, productId: 3, qty: 8, status: "出荷済", paid: "入金済" },
+];
+
+// 契約書（モック）
+let contracts = [
+  { id: 1, layer: "加盟店", entity: "株式会社オートライフ関東", file: "加盟店契約書_オートライフ関東.pdf", uploaded: "2026-02-01" },
+  { id: 2, layer: "加盟店", entity: "西日本カーネット株式会社", file: "加盟店契約書_西日本カーネット.pdf", uploaded: "2026-03-15" },
+  { id: 3, layer: "施工代理店", entity: "クリーンカーワークス東京", file: "施工代理店契約書_クリーンカーワークス.pdf", uploaded: "2026-02-15" },
+  { id: 4, layer: "取次店", entity: "中古車センターつくば", file: "取次店規約同意書_つくば.pdf", uploaded: "2026-03-01" },
+];
+
+// =====================================================
+// 状態・ユーティリティ
+// =====================================================
+let session = { role: null, entityId: null }; // role: hq / fc / shop / op
+
+const $ = id => document.getElementById(id);
+const yen = n => "¥" + n.toLocaleString();
+const fcById = id => franchises.find(f => f.id === id);
+const shopById = id => shops.find(s => s.id === id);
+const opById = id => contractors.find(c => c.id === id);
+const prodById = id => products.find(p => p.id === id);
+const poAmount = o => prodById(o.productId).price * o.qty;
+
+function soBadge(s) {
+  const map = { "新規受付": "b-red", "施工店確認中": "b-orange", "施工日確定": "b-blue", "施工完了": "b-green" };
+  return `<span class="badge ${map[s]}">${s}</span>`;
+}
+function poBadge(s) { return `<span class="badge ${s === "出荷済" ? "b-green" : "b-orange"}">${s}</span>`; }
+function paidBadge(s) { return `<span class="badge ${s === "入金済" ? "b-green" : "b-red"}">${s}</span>`; }
+function stBadge(s) {
+  const map = { "稼働中": "b-green", "準備中": "b-orange", "休眠": "b-orange", "解約": "b-red" };
+  return `<span class="badge ${map[s] || 'b-gray'}">${s}</span>`;
+}
+function flowHtml(status) {
+  const idx = SO_STATUS.indexOf(status);
+  return `<div class="flow-steps">${SO_STATUS.map((s, i) => `<div class="flow-step ${i <= idx ? "done" : ""}">${s}</div>`).join("")}</div>`;
+}
+
+// =====================================================
+// ログイン
+// =====================================================
+const ROLES = [
+  { key: "hq", icon: "🏛️", name: "本部", desc: "全体の管理・施工割り当て・受発注管理" },
+  { key: "fc", icon: "🏢", name: "加盟店", desc: "自社が獲得した取次店の管理（目標300店）" },
+  { key: "shop", icon: "🚙", name: "取次店", desc: "お客さまの取次・注文状況の確認" },
+  { key: "op", icon: "🧰", name: "施工代理店", desc: "施工案件の対応・消耗品の発注" },
+];
+
+function renderLogin() {
+  $("role-select-area").innerHTML = ROLES.map(r => `
+    <button class="role-btn" onclick="pickRole('${r.key}')">
+      <span class="icon">${r.icon}</span>
+      <span><b>${r.name}</b><small>${r.desc}</small></span>
+    </button>`).join("");
+}
+function pickRole(role) {
+  if (role === "hq") { login(role, null); return; }
+  const list = role === "fc" ? franchises : role === "shop" ? shops : contractors;
+  $("role-select-area").innerHTML = `
+    <div class="login-select">
+      <label style="font-size:12px;color:var(--muted);font-weight:bold">どの${ROLES.find(r => r.key === role).name}としてログインしますか？</label>
+      <select id="login-entity" style="margin-top:6px">
+        ${list.map(e => `<option value="${e.id}">${e.name}</option>`).join("")}
+      </select>
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="login('${role}', parseInt(document.getElementById('login-entity').value))">ログイン</button>
+    <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="renderLogin()">← 戻る</button>`;
+}
+function login(role, entityId) {
+  session = { role, entityId };
+  $("login-screen").style.display = "none";
+  $("sidebar").style.display = "flex";
+  $("main").style.display = "block";
+  buildUI();
+}
+function logout() {
+  session = { role: null, entityId: null };
+  $("login-screen").style.display = "flex";
+  $("sidebar").style.display = "none";
+  $("main").style.display = "none";
+  renderLogin();
+}
+
+// =====================================================
+// ロール別 UI 構築
+// =====================================================
+const NAVS = {
+  hq: [
+    { id: "hq-dash", icon: "📊", label: "ダッシュボード" },
+    { id: "hq-so", icon: "🛎️", label: "施工注文管理" },
+    { id: "hq-po", icon: "🧴", label: "消耗品受発注" },
+    { id: "hq-fc", icon: "🏢", label: "加盟店管理" },
+    { id: "hq-shop", icon: "🚙", label: "取次店管理" },
+    { id: "hq-op", icon: "🧰", label: "施工代理店管理" },
+    { id: "hq-contract", icon: "📄", label: "契約書管理" },
+  ],
+  fc: [
+    { id: "fc-dash", icon: "📊", label: "ダッシュボード" },
+    { id: "fc-shop", icon: "🚙", label: "取次店管理" },
+    { id: "fc-contract", icon: "📄", label: "契約書" },
+  ],
+  shop: [
+    { id: "shop-form", icon: "📝", label: "注文フォーム（QR）" },
+    { id: "shop-orders", icon: "🛎️", label: "取次履歴" },
+  ],
+  op: [
+    { id: "op-jobs", icon: "🧰", label: "施工案件" },
+    { id: "op-po", icon: "🧴", label: "消耗品注文" },
+  ],
+};
+
+function entityName() {
+  if (session.role === "hq") return "本部 管理者";
+  if (session.role === "fc") return fcById(session.entityId).name;
+  if (session.role === "shop") return shopById(session.entityId).name;
+  return opById(session.entityId).name;
+}
+
+function buildUI() {
+  const roleDef = ROLES.find(r => r.key === session.role);
+  $("role-banner").innerHTML = `${roleDef.icon} ${roleDef.name}としてログイン中<b>${entityName()}</b>`;
+  const navs = NAVS[session.role];
+  $("nav-area").innerHTML = navs.map((n, i) => `<div class="nav-item ${i === 0 ? "active" : ""}" data-page="${n.id}">${n.icon} ${n.label}</div>`).join("");
+  $("main").innerHTML = navs.map((n, i) => `<section class="page ${i === 0 ? "active" : ""}" id="page-${n.id}"></section>`).join("");
+  document.querySelectorAll(".nav-item").forEach(item => {
+    item.addEventListener("click", () => {
+      document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+      item.classList.add("active");
+      $("page-" + item.dataset.page).classList.add("active");
+    });
+  });
+  renderAll();
+}
+
+function renderAll() {
+  if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqFc(); renderHqShop(); renderHqOp(); renderHqContract(); }
+  if (session.role === "fc") { renderFcDash(); renderFcShop(); renderFcContract(); }
+  if (session.role === "shop") { renderShopForm(); renderShopOrders(); }
+  if (session.role === "op") { renderOpJobs(); renderOpPo(); }
+}
+
+// =====================================================
+// 本部
+// =====================================================
+function renderHqDash() {
+  const el = $("page-hq-dash"); if (!el) return;
+  const newSo = serviceOrders.filter(o => o.status === "新規受付").length;
+  const waitSo = serviceOrders.filter(o => o.status === "施工店確認中").length;
+  const doneSo = serviceOrders.filter(o => o.status === "施工完了").length;
+  const poUnshipped = supplyOrders.filter(o => o.status === "受注").length;
+  const poSales = supplyOrders.reduce((s, o) => s + poAmount(o), 0);
+  const activeShops = shops.filter(s => s.status === "稼働中").length;
+
+  const alerts = [];
+  serviceOrders.filter(o => o.status === "新規受付").forEach(o =>
+    alerts.push(`<div class="alert alert-danger">🛎️ <b>${o.id}</b>（${shopById(o.shopId).name} 経由）が施工店未割り当てです。施工代理店をアサインしてください。</div>`));
+  serviceOrders.filter(o => o.status === "施工店確認中").forEach(o =>
+    alerts.push(`<div class="alert alert-warn">⏳ <b>${o.id}</b> は ${opById(o.contractorId).name} の対応可否を確認中です。</div>`));
+  supplyOrders.filter(o => o.status === "受注").forEach(o =>
+    alerts.push(`<div class="alert alert-info">🧴 消耗品注文 <b>${o.id}</b>（${opById(o.contractorId).name}）が出荷待ちです。</div>`));
+
+  el.innerHTML = `
+    <div class="page-title">本部ダッシュボード</div>
+    <div class="page-desc">事業全体の状況：本部 ➨ 加盟店 ${franchises.length} 社 ➨ 取次店 ${shops.length} 店 ➨ 施工代理店 ${contractors.length} 社</div>
+    <div class="cards-row">
+      <div class="card"><div class="stat-label">未対応の施工注文</div><div class="stat-value" style="color:${newSo ? "var(--danger)" : "inherit"}">${newSo}<span style="font-size:14px"> 件</span></div><div class="stat-sub">確認中 ${waitSo} 件 / 完了 ${doneSo} 件</div></div>
+      <div class="card"><div class="stat-label">稼働取次店</div><div class="stat-value">${activeShops}<span style="font-size:14px"> 店</span></div><div class="stat-sub">目標 3,000 店（加盟店${franchises.length}社 × 300店）</div></div>
+      <div class="card"><div class="stat-label">消耗品 出荷待ち</div><div class="stat-value" style="color:${poUnshipped ? "var(--warning)" : "inherit"}">${poUnshipped}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工代理店からの注文</div></div>
+      <div class="card"><div class="stat-label">消耗品 累計売上</div><div class="stat-value">${yen(poSales)}</div><div class="stat-sub">2026年5月〜</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title" style="margin-top:0">要対応アラート</div>
+        ${alerts.join("") || `<div style="color:var(--muted)">対応が必要な項目はありません</div>`}
+      </div>
+      <div class="card">
+        <div class="section-title" style="margin-top:0">加盟店別 取次店獲得状況</div>
+        <table><thead><tr><th>加盟店</th><th>獲得数</th><th>目標</th></tr></thead><tbody>
+          ${franchises.map(f => {
+            const n = shops.filter(s => s.franchiseId === f.id).length;
+            return `<tr><td>${f.name}</td><td><b>${n}</b> 店</td><td style="color:var(--muted)">${f.target} 店</td></tr>`;
+          }).join("")}
+        </tbody></table>
+      </div>
+    </div>`;
+}
+
+function renderHqSo() {
+  const el = $("page-hq-so"); if (!el) return;
+  el.innerHTML = `
+    <div class="page-title">施工注文管理</div>
+    <div class="page-desc">取次店経由で入った注文を、近隣の施工代理店に割り当てます。行をクリックで詳細</div>
+    ${flowHtml("施工完了").replace(/done/g, "")}
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>注文番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>車種</th><th>希望日</th><th>施工代理店</th><th>状況</th><th>操作</th></tr></thead>
+        <tbody>
+          ${serviceOrders.map(o => `
+            <tr>
+              <td class="clickable link" onclick="showSoDetail('${o.id}')"><b>${o.id}</b></td>
+              <td>${o.date}</td>
+              <td>${shopById(o.shopId).name}</td>
+              <td>${o.customer}</td><td>${o.car}</td><td>${o.desire}</td>
+              <td>${o.contractorId ? opById(o.contractorId).name : `<span style="color:var(--danger)">未割り当て</span>`}</td>
+              <td>${soBadge(o.status)}</td>
+              <td>${hqSoAction(o)}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+function hqSoAction(o) {
+  if (o.status === "新規受付") return `<button class="btn btn-primary btn-sm" onclick="openAssignModal('${o.id}')">施工店を割り当て</button>`;
+  if (o.status === "施工店確認中") return `<span style="font-size:11px;color:var(--muted)">施工店の回答待ち</span>`;
+  return "—";
+}
+function openAssignModal(soId) {
+  const o = serviceOrders.find(x => x.id === soId);
+  openModal(`
+    <h2>施工代理店の割り当て — ${o.id}</h2>
+    <div class="alert alert-info">📍 取次店「${shopById(o.shopId).name}」（${shopById(o.shopId).region}）のお客さまです。対応エリアの近い施工代理店を選んでください。</div>
+    <div class="form-grid">
+      <div class="form-group full"><label>施工代理店</label>
+        <select id="assign-op">
+          ${contractors.filter(c => c.status === "稼働中").map(c => `<option value="${c.id}">${c.name}（対応：${c.areas}）</option>`).join("")}
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="assignOp('${o.id}')">割り当てて確認依頼</button>
+    </div>`);
+}
+function assignOp(soId) {
+  const o = serviceOrders.find(x => x.id === soId);
+  o.contractorId = parseInt($("assign-op").value);
+  o.status = "施工店確認中";
+  closeModal(); renderAll();
+}
+function showSoDetail(soId) {
+  const o = serviceOrders.find(x => x.id === soId);
+  const shop = shopById(o.shopId);
+  openModal(`
+    <h2>${o.id} ${soBadge(o.status)}</h2>
+    ${flowHtml(o.status)}
+    <div class="detail-grid">
+      <div class="detail-item"><div class="k">受付日</div><div class="v">${o.date}</div></div>
+      <div class="detail-item"><div class="k">取次店</div><div class="v">${shop.name}（${shop.region} / ${fcById(shop.franchiseId).name} 系列）</div></div>
+      <div class="detail-item"><div class="k">お客さま</div><div class="v">${o.customer}（${o.customerTel}）</div></div>
+      <div class="detail-item"><div class="k">車種</div><div class="v">${o.car}</div></div>
+      <div class="detail-item"><div class="k">希望日 / 確定日</div><div class="v">${o.desire} / ${o.scheduled || "未確定"}</div></div>
+      <div class="detail-item"><div class="k">施工代理店</div><div class="v">${o.contractorId ? opById(o.contractorId).name : "未割り当て"}</div></div>
+    </div>
+    ${o.note ? `<div class="alert alert-warn">📌 ${o.note}</div>` : ""}
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">閉じる</button></div>`);
+}
+
+function renderHqPo() {
+  const el = $("page-hq-po"); if (!el) return;
+  el.innerHTML = `
+    <div class="page-title">消耗品受発注管理</div>
+    <div class="page-desc">施工代理店からの除菌消臭剤などの注文と、本部在庫を管理します</div>
+    <div class="cards-row">
+      ${products.map(p => `
+        <div class="card"><div class="stat-label">${p.name}</div>
+        <div class="stat-value" style="color:${p.stock < 70 ? "var(--danger)" : "inherit"}">${p.stock}<span style="font-size:14px"> 本</span></div>
+        <div class="stat-sub">${p.stock < 70 ? "⚠ 在庫僅少" : "本部在庫"} / 卸価格 ${yen(p.price)}</div></div>`).join("")}
+    </div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>注文番号</th><th>注文日</th><th>施工代理店</th><th>商品</th><th>数量</th><th>金額</th><th>入金</th><th>状況</th><th>操作</th></tr></thead>
+        <tbody>
+          ${supplyOrders.map(o => `
+            <tr>
+              <td><b>${o.id}</b></td><td>${o.date}</td><td>${opById(o.contractorId).name}</td>
+              <td>${prodById(o.productId).name}</td><td>${o.qty}</td><td>${yen(poAmount(o))}</td>
+              <td>${paidBadge(o.paid)}</td><td>${poBadge(o.status)}</td>
+              <td>${o.status === "受注" ? `<button class="btn btn-primary btn-sm" onclick="shipPo('${o.id}')">出荷済にする</button>` : "—"}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+function shipPo(poId) {
+  const o = supplyOrders.find(x => x.id === poId);
+  o.status = "出荷済";
+  const p = prodById(o.productId);
+  p.stock = Math.max(0, p.stock - o.qty);
+  renderAll();
+}
+
+function renderHqFc() {
+  const el = $("page-hq-fc"); if (!el) return;
+  el.innerHTML = `
+    <div class="page-title">加盟店管理</div>
+    <div class="page-desc">取次店を募集する加盟店（目標10社）を管理します</div>
+    <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのため簡略化しています（本番では登録フォームを表示）')">＋ 加盟店を登録</button></div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>加盟店名</th><th>担当者</th><th>地域</th><th>獲得取次店</th><th>契約日</th><th>更新期限</th></tr></thead>
+        <tbody>
+          ${franchises.map(f => `
+            <tr><td><b>${f.name}</b></td><td>${f.contact}</td><td>${f.region}</td>
+            <td><b>${shops.filter(s => s.franchiseId === f.id).length}</b> / ${f.target} 店</td>
+            <td>${f.contractDate}</td><td>${f.renewDate}</td></tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderHqShop() {
+  const el = $("page-hq-shop"); if (!el) return;
+  el.innerHTML = `
+    <div class="page-title">取次店管理</div>
+    <div class="page-desc">全加盟店配下の取次店（目標3,000店）。各店にQRコード付き専用注文URLを発行します</div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>店舗コード</th><th>店舗名</th><th>業種</th><th>地域</th><th>所属加盟店</th><th>状態</th><th>取次数</th><th>専用QR</th></tr></thead>
+        <tbody>
+          ${shops.map(s => `
+            <tr>
+              <td><b>${s.code}</b></td><td>${s.name}</td><td>${s.type}</td><td>${s.region}</td>
+              <td>${fcById(s.franchiseId).name}</td><td>${stBadge(s.status)}</td>
+              <td>${serviceOrders.filter(o => o.shopId === s.id).length} 件</td>
+              <td><span class="link" onclick="showQr(${s.id})">📱 QR表示</span></td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+function showQr(shopId) {
+  const s = shopById(shopId);
+  openModal(`
+    <h2>${s.name} 専用QRコード</h2>
+    <div style="text-align:center;padding:10px 0 18px">
+      <div style="display:inline-block;padding:16px;border:1px solid var(--border);border-radius:12px">
+        <svg width="160" height="160" viewBox="0 0 29 29" style="display:block">
+          <rect width="29" height="29" fill="#fff"/>
+          ${mockQrSvg(s.id)}
+        </svg>
+      </div>
+      <div style="margin-top:12px;font-size:13px;color:var(--muted)">https://（システムURL）/order?shop=<b style="color:var(--primary)">${s.code}</b></div>
+      <div style="margin-top:6px;font-size:12px;color:var(--muted)">お客さまがこのQRを読み取ると、取次店が自動セットされた注文フォームが開きます</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">閉じる</button>
+      <button class="btn btn-primary" onclick="alert('モックのため印刷は省略しています')">🖨 印刷用シートを出力</button>
+    </div>`);
+}
+function mockQrSvg(seed) {
+  // モック用の擬似QRパターン（実際はQRライブラリで生成）
+  let cells = "";
+  let v = seed * 2654435761 % 4294967296;
+  for (let y = 0; y < 29; y++) for (let x = 0; x < 29; x++) {
+    v = (v * 1103515245 + 12345) % 2147483648;
+    const finder = (x < 7 && y < 7) || (x > 21 && y < 7) || (x < 7 && y > 21);
+    if (finder) {
+      const fx = x > 21 ? x - 22 : x, fy = y > 21 ? y - 22 : y;
+      if (fx === 0 || fx === 6 || fy === 0 || fy === 6 || (fx > 1 && fx < 5 && fy > 1 && fy < 5)) cells += `<rect x="${x}" y="${y}" width="1" height="1"/>`;
+    } else if (v % 100 < 45) cells += `<rect x="${x}" y="${y}" width="1" height="1"/>`;
+  }
+  return cells;
+}
+
+function renderHqOp() {
+  const el = $("page-hq-op"); if (!el) return;
+  el.innerHTML = `
+    <div class="page-title">施工代理店管理</div>
+    <div class="page-desc">施工を担当する代理店を管理します</div>
+    <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのため簡略化しています（本番では登録フォームを表示）')">＋ 施工代理店を登録</button></div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>代理店名</th><th>担当者</th><th>対応エリア</th><th>状態</th><th>施工実績</th><th>消耗品購入額</th><th>契約日</th></tr></thead>
+        <tbody>
+          ${contractors.map(c => `
+            <tr>
+              <td><b>${c.name}</b></td><td>${c.contact}</td><td>${c.areas}</td><td>${stBadge(c.status)}</td>
+              <td>${serviceOrders.filter(o => o.contractorId === c.id && o.status === "施工完了").length} 件</td>
+              <td>${yen(supplyOrders.filter(o => o.contractorId === c.id).reduce((s, o) => s + poAmount(o), 0))}</td>
+              <td>${c.contractDate}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderHqContract() {
+  const el = $("page-hq-contract"); if (!el) return;
+  el.innerHTML = `
+    <div class="page-title">契約書管理</div>
+    <div class="page-desc">加盟店・取次店・施工代理店の契約書をアップロード・管理します</div>
+    <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのためアップロードは省略しています')">＋ 契約書をアップロード</button></div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>レイヤー</th><th>契約先</th><th>ファイル</th><th>アップロード日</th></tr></thead>
+        <tbody>
+          ${contracts.map(c => `
+            <tr><td><span class="badge ${c.layer === "加盟店" ? "b-purple" : c.layer === "取次店" ? "b-blue" : "b-green"}">${c.layer}</span></td>
+            <td>${c.entity}</td><td><span class="link">📎 ${c.file}</span></td><td>${c.uploaded}</td></tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// =====================================================
+// 加盟店
+// =====================================================
+function myShops() { return shops.filter(s => s.franchiseId === session.entityId); }
+
+function renderFcDash() {
+  const el = $("page-fc-dash"); if (!el) return;
+  const f = fcById(session.entityId);
+  const ms = myShops();
+  const orders = serviceOrders.filter(o => ms.some(s => s.id === o.shopId));
+  el.innerHTML = `
+    <div class="page-title">加盟店ダッシュボード</div>
+    <div class="page-desc">${f.name} — 自社が獲得した取次店と取次実績を確認できます（他の加盟店の情報は見えません）</div>
+    <div class="cards-row">
+      <div class="card"><div class="stat-label">獲得取次店</div><div class="stat-value">${ms.length}<span style="font-size:14px"> 店</span></div><div class="stat-sub">目標 ${f.target} 店</div></div>
+      <div class="card"><div class="stat-label">稼働中</div><div class="stat-value">${ms.filter(s => s.status === "稼働中").length}<span style="font-size:14px"> 店</span></div><div class="stat-sub">準備中 ${ms.filter(s => s.status === "準備中").length} 店</div></div>
+      <div class="card"><div class="stat-label">配下取次店の取次件数</div><div class="stat-value">${orders.length}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工完了 ${orders.filter(o => o.status === "施工完了").length} 件</div></div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-top:0">配下取次店の最近の取次</div>
+      <table><thead><tr><th>受付日</th><th>取次店</th><th>車種</th><th>状況</th></tr></thead><tbody>
+        ${orders.slice(0, 6).map(o => `<tr><td>${o.date}</td><td>${shopById(o.shopId).name}</td><td>${o.car}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">取次はまだありません</td></tr>`}
+      </tbody></table>
+    </div>`;
+}
+
+function renderFcShop() {
+  const el = $("page-fc-shop"); if (!el) return;
+  el.innerHTML = `
+    <div class="page-title">取次店管理</div>
+    <div class="page-desc">自社で獲得した取次店を登録・管理します。登録すると専用QRコードが発行されます</div>
+    <div class="toolbar"><div></div><button class="btn btn-primary" onclick="openShopAddModal()">＋ 取次店を登録</button></div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>店舗コード</th><th>店舗名</th><th>業種</th><th>地域</th><th>状態</th><th>取次数</th><th>専用QR</th></tr></thead>
+        <tbody>
+          ${myShops().map(s => `
+            <tr>
+              <td><b>${s.code}</b></td><td>${s.name}</td><td>${s.type}</td><td>${s.region}</td>
+              <td>${stBadge(s.status)}</td>
+              <td>${serviceOrders.filter(o => o.shopId === s.id).length} 件</td>
+              <td><span class="link" onclick="showQr(${s.id})">📱 QR表示</span></td>
+            </tr>`).join("") || `<tr><td colspan="7" style="color:var(--muted)">取次店はまだ登録されていません</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+function openShopAddModal() {
+  openModal(`
+    <h2>取次店を登録</h2>
+    <div class="form-grid">
+      <div class="form-group full"><label>店舗名 *</label><input type="text" id="ns-name" placeholder="例）○○中古車センター"></div>
+      <div class="form-group"><label>業種</label><select id="ns-type"><option>中古車販売</option><option>パーツ販売</option><option>整備工場</option><option>ガソリンスタンド</option><option>その他</option></select></div>
+      <div class="form-group"><label>地域</label><input type="text" id="ns-region" placeholder="例）東京都"></div>
+      <div class="form-group"><label>担当者</label><input type="text" id="ns-contact"></div>
+      <div class="form-group"><label>電話番号</label><input type="text" id="ns-tel"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveShop()">登録してQRを発行</button>
+    </div>`);
+}
+function saveShop() {
+  const name = $("ns-name").value.trim();
+  if (!name) { alert("店舗名を入力してください"); return; }
+  const id = Math.max(...shops.map(s => s.id)) + 1;
+  shops.push({
+    id, code: "SHOP-" + String(id).padStart(4, "0"), name,
+    franchiseId: session.entityId, type: $("ns-type").value, contact: $("ns-contact").value,
+    tel: $("ns-tel").value, region: $("ns-region").value || "未設定", status: "準備中", joined: TODAY,
+  });
+  closeModal(); renderAll(); showQr(id);
+}
+
+function renderFcContract() {
+  const el = $("page-fc-contract"); if (!el) return;
+  const f = fcById(session.entityId);
+  const mine = contracts.filter(c => c.entity === f.name || myShops().some(s => s.name === c.entity));
+  el.innerHTML = `
+    <div class="page-title">契約書</div>
+    <div class="page-desc">自社の加盟店契約と、自社配下の取次店の同意書を管理します</div>
+    <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのためアップロードは省略しています')">＋ 契約書をアップロード</button></div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>種別</th><th>契約先</th><th>ファイル</th><th>アップロード日</th></tr></thead>
+        <tbody>
+          ${mine.map(c => `<tr><td><span class="badge b-purple">${c.layer}</span></td><td>${c.entity}</td><td><span class="link">📎 ${c.file}</span></td><td>${c.uploaded}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">契約書はまだありません</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// =====================================================
+// 取次店
+// =====================================================
+function renderShopForm() {
+  const el = $("page-shop-form"); if (!el) return;
+  const s = shopById(session.entityId);
+  el.innerHTML = `
+    <div class="page-title">注文フォーム</div>
+    <div class="page-desc">お客さまがQRコードを読み取ると、この画面がスマホで開きます（取次店は自動セット済み）</div>
+    <div class="customer-form-wrap">
+      <div class="qr-banner">📱 QRコード経由のアクセスを再現しています：<br>https://（システムURL）/order?shop=<b>${s.code}</b></div>
+      <div class="card">
+        <h2 style="font-size:16px;margin-bottom:4px">🚗 車内除菌消臭の申し込み</h2>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px">受付店舗：<b style="color:var(--primary)">${s.name}</b>（自動入力・変更不要）</div>
+        <div class="form-grid" style="grid-template-columns:1fr">
+          <div class="form-group"><label>お名前 *</label><input type="text" id="cf-name" placeholder="例）山田 太郎"></div>
+          <div class="form-group"><label>電話番号 *</label><input type="text" id="cf-tel" placeholder="例）090-1234-5678"></div>
+          <div class="form-group"><label>車種</label><input type="text" id="cf-car" placeholder="例）トヨタ プリウス"></div>
+          <div class="form-group"><label>施工希望日</label><input type="date" id="cf-date" value="2026-06-20"></div>
+          <div class="form-group"><label>気になる点（任意）</label><textarea id="cf-note" rows="2" placeholder="例）タバコ臭・ペット臭など"></textarea></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:16px;padding:12px" onclick="submitCustomerOrder()">この内容で申し込む</button>
+      </div>
+    </div>`;
+}
+function submitCustomerOrder() {
+  const name = $("cf-name").value.trim(), tel = $("cf-tel").value.trim();
+  if (!name || !tel) { alert("お名前と電話番号を入力してください"); return; }
+  const num = serviceOrders.length + 1;
+  serviceOrders.unshift({
+    id: "SO-" + String(num).padStart(4, "0"), date: TODAY, shopId: session.entityId,
+    customer: name + " 様", customerTel: tel, car: $("cf-car").value || "未記入",
+    desire: $("cf-date").value, status: "新規受付", contractorId: null, scheduled: null,
+    note: $("cf-note").value,
+  });
+  renderAll();
+  openModal(`
+    <h2>✅ 申し込みを受け付けました</h2>
+    <div class="alert alert-info">本部にて確認のうえ、施工担当店からご連絡いたします。<br>受付番号：<b>SO-${String(num).padStart(4, "0")}</b></div>
+    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">閉じる</button></div>`);
+}
+
+function renderShopOrders() {
+  const el = $("page-shop-orders"); if (!el) return;
+  const list = serviceOrders.filter(o => o.shopId === session.entityId);
+  el.innerHTML = `
+    <div class="page-title">取次履歴</div>
+    <div class="page-desc">自店経由の申し込みと進捗を確認できます（他店の情報は見えません）</div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>受付番号</th><th>受付日</th><th>お客さま</th><th>車種</th><th>希望日</th><th>状況</th></tr></thead>
+        <tbody>
+          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.car}</td><td>${o.desire}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="6" style="color:var(--muted)">取次はまだありません</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// =====================================================
+// 施工代理店
+// =====================================================
+function renderOpJobs() {
+  const el = $("page-op-jobs"); if (!el) return;
+  const list = serviceOrders.filter(o => o.contractorId === session.entityId);
+  const pending = list.filter(o => o.status === "施工店確認中");
+  el.innerHTML = `
+    <div class="page-title">施工案件</div>
+    <div class="page-desc">本部から割り当てられた案件です。対応可否の回答と施工完了の報告を行います</div>
+    ${pending.map(o => `<div class="alert alert-warn">⏳ <b>${o.id}</b>（${o.car} / 希望日 ${o.desire}）の対応可否を回答してください。</div>`).join("")}
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>案件番号</th><th>受付日</th><th>お客さま</th><th>車種</th><th>希望日</th><th>確定日</th><th>状況</th><th>操作</th></tr></thead>
+        <tbody>
+          ${list.map(o => `
+            <tr>
+              <td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}<br><span style="font-size:11px;color:var(--muted)">${o.customerTel}</span></td>
+              <td>${o.car}</td><td>${o.desire}</td><td>${o.scheduled || "—"}</td><td>${soBadge(o.status)}</td>
+              <td>${opJobAction(o)}</td>
+            </tr>`).join("") || `<tr><td colspan="8" style="color:var(--muted)">割り当てられた案件はありません</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+function opJobAction(o) {
+  if (o.status === "施工店確認中") return `<button class="btn btn-success btn-sm" onclick="acceptJob('${o.id}')">対応できる</button> <button class="btn btn-ghost btn-sm" onclick="declineJob('${o.id}')">対応不可</button>`;
+  if (o.status === "施工日確定") return `<button class="btn btn-primary btn-sm" onclick="completeJob('${o.id}')">施工完了を報告</button>`;
+  return "—";
+}
+function acceptJob(soId) {
+  const o = serviceOrders.find(x => x.id === soId);
+  o.status = "施工日確定";
+  o.scheduled = o.desire;
+  renderAll();
+}
+function declineJob(soId) {
+  const o = serviceOrders.find(x => x.id === soId);
+  o.status = "新規受付";
+  o.contractorId = null;
+  renderAll();
+  alert("対応不可として本部に戻しました。本部が別の施工代理店を割り当てます。");
+}
+function completeJob(soId) {
+  const o = serviceOrders.find(x => x.id === soId);
+  o.status = "施工完了";
+  renderAll();
+}
+
+function renderOpPo() {
+  const el = $("page-op-po"); if (!el) return;
+  const list = supplyOrders.filter(o => o.contractorId === session.entityId);
+  el.innerHTML = `
+    <div class="page-title">消耗品注文</div>
+    <div class="page-desc">除菌消臭剤などの消耗品を本部に注文します</div>
+    <div class="toolbar"><div></div><button class="btn btn-primary" onclick="openPoModal()">＋ 消耗品を注文</button></div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>注文番号</th><th>注文日</th><th>商品</th><th>数量</th><th>金額</th><th>入金</th><th>状況</th></tr></thead>
+        <tbody>
+          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${prodById(o.productId).name}</td><td>${o.qty}</td><td>${yen(poAmount(o))}</td><td>${paidBadge(o.paid)}</td><td>${poBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="7" style="color:var(--muted)">注文履歴はありません</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+function openPoModal() {
+  openModal(`
+    <h2>消耗品を注文</h2>
+    <div class="form-grid">
+      <div class="form-group full"><label>商品</label>
+        <select id="po-product">${products.map(p => `<option value="${p.id}">${p.name}（${yen(p.price)}）</option>`).join("")}</select>
+      </div>
+      <div class="form-group"><label>数量</label><input type="number" id="po-qty" value="10" min="1"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="savePo()">注文する</button>
+    </div>`);
+}
+function savePo() {
+  const num = supplyOrders.length + 1;
+  supplyOrders.unshift({
+    id: "PO-" + String(num).padStart(4, "0"), date: TODAY, contractorId: session.entityId,
+    productId: parseInt($("po-product").value), qty: parseInt($("po-qty").value) || 1,
+    status: "受注", paid: "未入金",
+  });
+  closeModal(); renderAll();
+}
+
+// =====================================================
+// モーダル共通
+// =====================================================
+function openModal(html) { $("modal-content").innerHTML = html; $("modal-bg").classList.add("open"); }
+function closeModal() { $("modal-bg").classList.remove("open"); }
+$("modal-bg").addEventListener("click", e => { if (e.target === $("modal-bg")) closeModal(); });
+
+// 初期表示
+renderLogin();
+</script>
+</body>
+</html>
