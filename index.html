@@ -178,14 +178,14 @@ let shops = [
 
 // 施工代理店
 let contractors = [
-  { id: 1, name: "クリーンカーワークス東京", contact: "高橋 健", tel: "03-7777-1111", region: "関東", areas: "東京・埼玉・千葉", status: "稼働中", contractDate: "2026-02-15", renewDate: "2027-02-14" },
-  { id: 2, name: "茨城デタールサービス", contact: "渡辺 修", tel: "029-888-2222", region: "関東", areas: "茨城・栃木", status: "稼働中", contractDate: "2026-03-01", renewDate: "2027-02-28" },
-  { id: 3, name: "関西施工サービス", contact: "松本 浩", tel: "06-999-3333", region: "関西", areas: "大阪・兵庫・京都", status: "稼働中", contractDate: "2026-04-01", renewDate: "2027-03-31" },
-  { id: 4, name: "東海カークリーン", contact: "山口 哲", tel: "052-000-4444", region: "中部", areas: "愛知・岐阜・三重", status: "稼働中", contractDate: "2026-05-15", renewDate: "2027-05-14" },
+  { id: 1, name: "クリーンカーワークス東京", contact: "高橋 健", tel: "03-7777-1111", region: "関東", areas: "東京・埼玉・千葉", prefs: ["東京都", "埼玉県", "千葉県"], status: "稼働中", contractDate: "2026-02-15", renewDate: "2027-02-14", demoStatus: "済", availableDays: ["月", "火", "水", "木", "金"], ngDates: ["2026-06-15"] },
+  { id: 2, name: "茨城デタールサービス", contact: "渡辺 修", tel: "029-888-2222", region: "関東", areas: "茨城・栃木", prefs: ["茨城県", "栃木県"], status: "稼働中", contractDate: "2026-03-01", renewDate: "2027-02-28", demoStatus: "済", availableDays: ["火", "水", "木", "金", "土"], ngDates: [] },
+  { id: 3, name: "関西施工サービス", contact: "松本 浩", tel: "06-999-3333", region: "関西", areas: "大阪・兵庫・京都", prefs: ["大阪府", "兵庫県", "京都府"], status: "稼働中", contractDate: "2026-04-01", renewDate: "2027-03-31", demoStatus: "未", availableDays: ["月", "火", "木", "金"], ngDates: ["2026-06-18", "2026-06-19"] },
+  { id: 4, name: "東海カークリーン", contact: "山口 哲", tel: "052-000-4444", region: "中部", areas: "愛知・岐阜・三重", prefs: ["愛知県", "岐阜県", "三重県"], status: "稼働中", contractDate: "2026-05-15", renewDate: "2027-05-14", demoStatus: "未", availableDays: ["月", "水", "木", "金", "土"], ngDates: [] },
 ];
 
 // 施工注文（取次店経由でお客さまから入る注文）
-const SO_STATUS = ["新規受付", "施工店確認中", "施工日確定", "施工完了"];
+const SO_STATUS = ["新規受付", "施工店確認中", "施工日確定", "貴重品確認済み", "施工完了"];
 let serviceOrders = [
   { id: "SO-0008", date: "2026-06-10", shopId: 1, customer: "斎藤 様", customerTel: "090-1111-2222", car: "トヨタ アルファード", desire: "2026-06-18", status: "新規受付", contractorId: null, scheduled: null, note: "ペット臭が気になるとのこと" },
   { id: "SO-0007", date: "2026-06-09", shopId: 4, customer: "岡本 様", customerTel: "080-3333-4444", car: "ホンダ N-BOX", desire: "2026-06-15", status: "施工店確認中", contractorId: 3, scheduled: null, note: "タバコ臭" },
@@ -199,9 +199,9 @@ let serviceOrders = [
 
 // 消耗品（除菌消臭剤）
 let products = [
-  { id: 1, name: "除菌消臭剤 施工用 1L", price: 3200, stock: 240 },
-  { id: 2, name: "除菌消臭剤 施工用 4L", price: 11000, stock: 80 },
-  { id: 3, name: "仕上げ用コーティングミスト 500ml", price: 1800, stock: 65 },
+  { id: 1, name: "車の消臭プロ 10L", price: 15000, stock: 240 },
+  { id: 2, name: "タバコの臭い取り", price: null, stock: 80 },
+  { id: 3, name: "200mlスプレーボトル（家電量販店向け・検討中）", price: null, stock: 0 },
 ];
 
 // 消耗品注文（施工代理店 → 本部）
@@ -215,10 +215,10 @@ let supplyOrders = [
 
 // 契約書（モック）
 let contracts = [
-  { id: 1, layer: "加盟店", entity: "株式会社オートライフ関東", file: "加盟店契約書_オートライフ関東.pdf", uploaded: "2026-02-01" },
-  { id: 2, layer: "加盟店", entity: "西日本カーネット株式会社", file: "加盟店契約書_西日本カーネット.pdf", uploaded: "2026-03-15" },
-  { id: 3, layer: "施工代理店", entity: "クリーンカーワークス東京", file: "施工代理店契約書_クリーンカーワークス.pdf", uploaded: "2026-02-15" },
-  { id: 4, layer: "取次店", entity: "中古車センターつくば", file: "取次店規約同意書_つくば.pdf", uploaded: "2026-03-01" },
+  { id: 1, layer: "加盟店", entity: "株式会社オートライフ関東", file: "加盟店契約書_オートライフ関東.pdf", uploaded: "2026-02-01", feeAmount: 1000000, feePaid: "入金済" },
+  { id: 2, layer: "加盟店", entity: "西日本カーネット株式会社", file: "加盟店契約書_西日本カーネット.pdf", uploaded: "2026-03-15", feeAmount: 1000000, feePaid: "未入金" },
+  { id: 3, layer: "施工代理店", entity: "クリーンカーワークス東京", file: "施工代理店契約書_クリーンカーワークス.pdf", uploaded: "2026-02-15", feeAmount: null, feePaid: null },
+  { id: 4, layer: "取次店", entity: "中古車センターつくば", file: "取次店規約同意書_つくば.pdf", uploaded: "2026-03-01", feeAmount: null, feePaid: null },
 ];
 
 // =====================================================
@@ -227,15 +227,18 @@ let contracts = [
 let session = { role: null, entityId: null }; // role: hq / fc / shop / op
 
 const $ = id => document.getElementById(id);
-const yen = n => "¥" + n.toLocaleString();
+const yen = n => n == null ? "金額確認中" : "¥" + n.toLocaleString();
 const fcById = id => franchises.find(f => f.id === id);
 const shopById = id => shops.find(s => s.id === id);
 const opById = id => contractors.find(c => c.id === id);
 const prodById = id => products.find(p => p.id === id);
-const poAmount = o => prodById(o.productId).price * o.qty;
+const poAmount = o => {
+  const price = prodById(o.productId).price;
+  return price == null ? null : price * o.qty;
+};
 
 function soBadge(s) {
-  const map = { "新規受付": "b-red", "施工店確認中": "b-orange", "施工日確定": "b-blue", "施工完了": "b-green" };
+  const map = { "新規受付": "b-red", "施工店確認中": "b-orange", "施工日確定": "b-blue", "貴重品確認済み": "b-purple", "施工完了": "b-green" };
   return `<span class="badge ${map[s]}">${s}</span>`;
 }
 function poBadge(s) { return `<span class="badge ${s === "出荷済" ? "b-green" : "b-orange"}">${s}</span>`; }
@@ -243,6 +246,19 @@ function paidBadge(s) { return `<span class="badge ${s === "入金済" ? "b-gree
 function stBadge(s) {
   const map = { "稼働中": "b-green", "準備中": "b-orange", "休眠": "b-orange", "解約": "b-red" };
   return `<span class="badge ${map[s] || 'b-gray'}">${s}</span>`;
+}
+// 祝日は簡易モックのため未対応（本番では祝日カレンダーAPI等と連携する想定）
+const HOLIDAYS = ["2026-06-15"];
+function addBusinessDays(dateStr, days) {
+  const d = new Date(dateStr + "T00:00:00");
+  let added = 0;
+  while (added < days) {
+    d.setDate(d.getDate() + 1);
+    const dow = d.getDay();
+    const iso = d.toISOString().slice(0, 10);
+    if (dow !== 0 && dow !== 6 && !HOLIDAYS.includes(iso)) added++;
+  }
+  return d.toISOString().slice(0, 10);
 }
 function flowHtml(status) {
   const idx = SO_STATUS.indexOf(status);
@@ -428,26 +444,55 @@ function hqSoAction(o) {
   if (o.status === "施工店確認中") return `<span style="font-size:11px;color:var(--muted)">施工店の回答待ち</span>`;
   return "—";
 }
+// 都道府県が一致する施工代理店を「近い」とみなす簡易距離モック（本番では緯度経度で算出）
+function mockDistance(shopPref, c) {
+  if (c.prefs.includes(shopPref)) return 0 + (c.id % 5);
+  if (c.region && shopPref) return 30 + (c.id * 7) % 50;
+  return 999;
+}
 function openAssignModal(soId) {
+  renderAssignList(soId, "");
+}
+function renderAssignList(soId, prefFilter) {
   const o = serviceOrders.find(x => x.id === soId);
+  const shopPref = shopById(o.shopId).region;
+  const allPrefs = [...new Set(contractors.flatMap(c => c.prefs))].sort();
+  let list = contractors.filter(c => c.status === "稼働中");
+  if (prefFilter) list = list.filter(c => c.prefs.includes(prefFilter));
+  list = list.map(c => ({ c, dist: mockDistance(shopPref, c) })).sort((a, b) => a.dist - b.dist);
   openModal(`
     <h2>施工代理店の割り当て — ${o.id}</h2>
-    <div class="alert alert-info">📍 取次店「${shopById(o.shopId).name}」（${shopById(o.shopId).region}）のお客さまです。対応エリアの近い施工代理店を選んでください。</div>
+    <div class="alert alert-info">📍 取次店「${shopById(o.shopId).name}」（${shopPref}）のお客さまです。距離が近い順に表示しています。</div>
     <div class="form-grid">
-      <div class="form-group full"><label>施工代理店</label>
-        <select id="assign-op">
-          ${contractors.filter(c => c.status === "稼働中").map(c => `<option value="${c.id}">${c.name}（対応：${c.areas}）</option>`).join("")}
+      <div class="form-group full"><label>都道府県で絞り込み</label>
+        <select onchange="renderAssignList('${o.id}', this.value)">
+          <option value="">すべて</option>
+          ${allPrefs.map(p => `<option value="${p}" ${p === prefFilter ? "selected" : ""}>${p}</option>`).join("")}
         </select>
       </div>
     </div>
+    <div class="card" style="padding:0;margin-top:6px;max-height:320px;overflow-y:auto">
+      <table>
+        <thead><tr><th>施工代理店</th><th>距離</th><th>対応可能曜日</th><th>直近のNG日</th><th></th></tr></thead>
+        <tbody>
+          ${list.map(({ c, dist }) => `
+            <tr>
+              <td><b>${c.name}</b><br><span style="font-size:11px;color:var(--muted)">対応：${c.areas}</span></td>
+              <td>${dist === 0 ? "同一都道府県" : dist + "km 相当"}</td>
+              <td>${c.availableDays.join("・")}</td>
+              <td>${c.ngDates.length ? c.ngDates.join(", ") : "—"}</td>
+              <td><button class="btn btn-primary btn-sm" onclick="assignOp('${o.id}', ${c.id})">割り当て</button></td>
+            </tr>`).join("") || `<tr><td colspan="5" style="color:var(--muted)">該当する施工代理店がありません</td></tr>`}
+        </tbody>
+      </table>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
-      <button class="btn btn-primary" onclick="assignOp('${o.id}')">割り当てて確認依頼</button>
     </div>`);
 }
-function assignOp(soId) {
+function assignOp(soId, contractorId) {
   const o = serviceOrders.find(x => x.id === soId);
-  o.contractorId = parseInt($("assign-op").value);
+  o.contractorId = contractorId;
   o.status = "施工店確認中";
   closeModal(); renderAll();
 }
@@ -464,6 +509,7 @@ function showSoDetail(soId) {
       <div class="detail-item"><div class="k">車種</div><div class="v">${o.car}</div></div>
       <div class="detail-item"><div class="k">希望日 / 確定日</div><div class="v">${o.desire} / ${o.scheduled || "未確定"}</div></div>
       <div class="detail-item"><div class="k">施工代理店</div><div class="v">${o.contractorId ? opById(o.contractorId).name : "未割り当て"}</div></div>
+      <div class="detail-item"><div class="k">貴重品確認</div><div class="v">${SO_STATUS.indexOf(o.status) >= SO_STATUS.indexOf("貴重品確認済み") ? '<span class="badge b-purple">確認済み</span>' : '<span class="badge b-gray">未確認</span>'}</div></div>
     </div>
     ${o.note ? `<div class="alert alert-warn">📌 ${o.note}</div>` : ""}
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">閉じる</button></div>`);
@@ -584,11 +630,12 @@ function renderHqOp() {
     <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのため簡略化しています（本番では登録フォームを表示）')">＋ 施工代理店を登録</button></div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>代理店名</th><th>担当者</th><th>対応エリア</th><th>状態</th><th>施工実績</th><th>消耗品購入額</th><th>契約日</th></tr></thead>
+        <thead><tr><th>代理店名</th><th>担当者</th><th>対応エリア</th><th>状態</th><th>デモ施工</th><th>施工実績</th><th>消耗品購入額</th><th>契約日</th></tr></thead>
         <tbody>
           ${contractors.map(c => `
             <tr>
               <td><b>${c.name}</b></td><td>${c.contact}</td><td>${c.areas}</td><td>${stBadge(c.status)}</td>
+              <td><span class="badge clickable ${c.demoStatus === "済" ? "b-green" : "b-orange"}" onclick="toggleDemoStatus(${c.id})">${c.demoStatus}</span></td>
               <td>${serviceOrders.filter(o => o.contractorId === c.id && o.status === "施工完了").length} 件</td>
               <td>${yen(supplyOrders.filter(o => o.contractorId === c.id).reduce((s, o) => s + poAmount(o), 0))}</td>
               <td>${c.contractDate}</td>
@@ -596,6 +643,12 @@ function renderHqOp() {
         </tbody>
       </table>
     </div>`;
+}
+
+function toggleDemoStatus(id) {
+  const c = opById(id);
+  c.demoStatus = c.demoStatus === "済" ? "未" : "済";
+  renderAll();
 }
 
 function renderHqContract() {
@@ -606,11 +659,13 @@ function renderHqContract() {
     <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのためアップロードは省略しています')">＋ 契約書をアップロード</button></div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>レイヤー</th><th>契約先</th><th>ファイル</th><th>アップロード日</th></tr></thead>
+        <thead><tr><th>レイヤー</th><th>契約先</th><th>ファイル</th><th>アップロード日</th><th>加盟金</th><th>入金状況</th></tr></thead>
         <tbody>
           ${contracts.map(c => `
             <tr><td><span class="badge ${c.layer === "加盟店" ? "b-purple" : c.layer === "取次店" ? "b-blue" : "b-green"}">${c.layer}</span></td>
-            <td>${c.entity}</td><td><span class="link">📎 ${c.file}</span></td><td>${c.uploaded}</td></tr>`).join("")}
+            <td>${c.entity}</td><td><span class="link">📎 ${c.file}</span></td><td>${c.uploaded}</td>
+            <td>${c.feeAmount != null ? yen(c.feeAmount) : "—"}</td>
+            <td>${c.feePaid ? paidBadge(c.feePaid) : "—"}</td></tr>`).join("")}
         </tbody>
       </table>
     </div>`;
@@ -700,9 +755,10 @@ function renderFcContract() {
     <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのためアップロードは省略しています')">＋ 契約書をアップロード</button></div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>種別</th><th>契約先</th><th>ファイル</th><th>アップロード日</th></tr></thead>
+        <thead><tr><th>種別</th><th>契約先</th><th>ファイル</th><th>アップロード日</th><th>加盟金</th><th>入金状況</th></tr></thead>
         <tbody>
-          ${mine.map(c => `<tr><td><span class="badge b-purple">${c.layer}</span></td><td>${c.entity}</td><td><span class="link">📎 ${c.file}</span></td><td>${c.uploaded}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">契約書はまだありません</td></tr>`}
+          ${mine.map(c => `<tr><td><span class="badge b-purple">${c.layer}</span></td><td>${c.entity}</td><td><span class="link">📎 ${c.file}</span></td><td>${c.uploaded}</td>
+            <td>${c.feeAmount != null ? yen(c.feeAmount) : "—"}</td><td>${c.feePaid ? paidBadge(c.feePaid) : "—"}</td></tr>`).join("") || `<tr><td colspan="6" style="color:var(--muted)">契約書はまだありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
@@ -726,7 +782,9 @@ function renderShopForm() {
           <div class="form-group"><label>お名前 *</label><input type="text" id="cf-name" placeholder="例）山田 太郎"></div>
           <div class="form-group"><label>電話番号 *</label><input type="text" id="cf-tel" placeholder="例）090-1234-5678"></div>
           <div class="form-group"><label>車種</label><input type="text" id="cf-car" placeholder="例）トヨタ プリウス"></div>
-          <div class="form-group"><label>施工希望日</label><input type="date" id="cf-date" value="2026-06-20"></div>
+          <div class="form-group"><label>施工希望日</label><input type="date" id="cf-date" min="${addBusinessDays(TODAY, 3)}" value="${addBusinessDays(TODAY, 3)}">
+            <small style="color:var(--muted);font-size:11px">申込日から3営業日後（土日祝を除く）以降からお選びいただけます</small>
+          </div>
           <div class="form-group"><label>気になる点（任意）</label><textarea id="cf-note" rows="2" placeholder="例）タバコ臭・ペット臭など"></textarea></div>
         </div>
         <button class="btn btn-primary" style="width:100%;margin-top:16px;padding:12px" onclick="submitCustomerOrder()">この内容で申し込む</button>
@@ -736,6 +794,8 @@ function renderShopForm() {
 function submitCustomerOrder() {
   const name = $("cf-name").value.trim(), tel = $("cf-tel").value.trim();
   if (!name || !tel) { alert("お名前と電話番号を入力してください"); return; }
+  const minDate = addBusinessDays(TODAY, 3);
+  if ($("cf-date").value < minDate) { alert("施工希望日は申込日から3営業日後（土日祝を除く）以降を選択してください"); return; }
   const num = serviceOrders.length + 1;
   serviceOrders.unshift({
     id: "SO-" + String(num).padStart(4, "0"), date: TODAY, shopId: session.entityId,
@@ -793,7 +853,8 @@ function renderOpJobs() {
 }
 function opJobAction(o) {
   if (o.status === "施工店確認中") return `<button class="btn btn-success btn-sm" onclick="acceptJob('${o.id}')">対応できる</button> <button class="btn btn-ghost btn-sm" onclick="declineJob('${o.id}')">対応不可</button>`;
-  if (o.status === "施工日確定") return `<button class="btn btn-primary btn-sm" onclick="completeJob('${o.id}')">施工完了を報告</button>`;
+  if (o.status === "施工日確定") return `<button class="btn btn-primary btn-sm" onclick="openValuablesModal('${o.id}')">貴重品確認へ進む</button>`;
+  if (o.status === "貴重品確認済み") return `<button class="btn btn-primary btn-sm" onclick="completeJob('${o.id}')">施工完了を報告</button>`;
   return "—";
 }
 function acceptJob(soId) {
@@ -808,6 +869,29 @@ function declineJob(soId) {
   o.contractorId = null;
   renderAll();
   alert("対応不可として本部に戻しました。本部が別の施工代理店を割り当てます。");
+}
+function openValuablesModal(soId) {
+  const o = serviceOrders.find(x => x.id === soId);
+  openModal(`
+    <h2>貴重品確認 — ${o.id}</h2>
+    <div class="alert alert-warn">📢 施工前に、お客さま（${o.customer}）へ以下を読み上げてご確認ください。</div>
+    <div class="card" style="background:#f8fafc;margin-bottom:14px">
+      車内に貴重品（財布・スマートフォン・貴金属類など）が残っていないか、お客さまご自身で確認いただきました。
+      施工中の車内の貴重品について、当社および施工代理店は責任を負いかねます。
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+      <input type="checkbox" id="valuables-check"> 上記内容をお客さまに読み上げ、確認いただきました
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitValuablesCheck('${o.id}')">確認済みとして送信</button>
+    </div>`);
+}
+function submitValuablesCheck(soId) {
+  if (!$("valuables-check").checked) { alert("チェックボックスにチェックを入れてください"); return; }
+  const o = serviceOrders.find(x => x.id === soId);
+  o.status = "貴重品確認済み";
+  closeModal(); renderAll();
 }
 function completeJob(soId) {
   const o = serviceOrders.find(x => x.id === soId);
