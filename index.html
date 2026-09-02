@@ -164,6 +164,18 @@
 // =====================================================
 const TODAY = "2026-06-11";
 
+// 本部・取次店・施工代理店への配分（手数料）率。請求先・料率とも本部でまだ確定していないため
+// 仮の数値を置いている。決まり次第この値だけ差し替えれば、受取額の表示に自動反映される。
+let commissionSettings = {
+  confirmed: false,     // 本部で正式決定したら true にする（true になるまで「仮」表示を出す）
+  hqRate: 0.15,          // 本部の取り分（仮）
+  shopRate: 0.15,        // 取次店の取り分（仮）
+  contractorRate: 0.70,  // 施工代理店の取り分（仮）
+};
+function contractorPayout(amount) {
+  return amount == null ? null : Math.round(amount * commissionSettings.contractorRate);
+}
+
 const PREFECTURES = [
   "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
   "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
@@ -970,17 +982,18 @@ function renderOpJobs() {
     ${pending.map(o => `<div class="alert alert-warn">⏳ <b>${o.id}</b>（${o.customerPref}${o.customerCity} / ${o.car} / 希望日 ${o.desire}）の対応可否を回答してください。</div>`).join("")}
     <div class="cards-row">
       <div class="card"><div class="stat-label">対応案件の合計金額</div><div class="stat-value">${yen(totalAll)}</div><div class="stat-sub">全${list.length}件（施工完了 ${doneList.length}件・${yen(totalDone)}）</div></div>
+      <div class="card"><div class="stat-label">受取見込み額${commissionSettings.confirmed ? "" : "（仮）"}</div><div class="stat-value" style="color:var(--primary-dark)">${yen(contractorPayout(totalAll))}</div><div class="stat-sub">料率 ${(commissionSettings.contractorRate * 100).toFixed(0)}% で試算${commissionSettings.confirmed ? "" : "・本部で確定次第この数値に切り替わります"}</div></div>
       <div class="card" style="grid-column:span 2">
         <div class="stat-label" style="margin-bottom:8px">取次店ごとの内訳（参考）</div>
-        <table style="font-size:12px"><thead><tr><th>取次店</th><th>件数</th><th>金額</th></tr></thead><tbody>
-          ${shopRows.map(r => `<tr><td>${r.shop.name}</td><td>${r.count}件</td><td>${yen(r.amount)}</td></tr>`).join("") || `<tr><td colspan="3" style="color:var(--muted)">対応案件はありません</td></tr>`}
+        <table style="font-size:12px"><thead><tr><th>取次店</th><th>件数</th><th>金額</th><th>受取見込み${commissionSettings.confirmed ? "" : "（仮）"}</th></tr></thead><tbody>
+          ${shopRows.map(r => `<tr><td>${r.shop.name}</td><td>${r.count}件</td><td>${yen(r.amount)}</td><td>${yen(contractorPayout(r.amount))}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対応案件はありません</td></tr>`}
         </tbody></table>
       </div>
     </div>
-    <div class="alert alert-info" style="font-size:12px">※ 表示している金額はお客さまからお預かりした施工料金です。本部・取次店・施工代理店の間での配分（請求先や手数料率）は決まり次第反映します。</div>
+    <div class="alert alert-info" style="font-size:12px">※ 「金額」はお客さまからお預かりした施工料金、「受取見込み額」はそのうち施工代理店の取り分を試算したものです。請求先や料率（現在は施工代理店${(commissionSettings.contractorRate * 100).toFixed(0)}%／取次店${(commissionSettings.shopRate * 100).toFixed(0)}%／本部${(commissionSettings.hqRate * 100).toFixed(0)}%の仮の値）は本部で決まり次第反映します。</div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>案件番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>施工場所</th><th>車種 / 区分</th><th>金額</th><th>希望日</th><th>確定日</th><th>状況</th><th>操作</th></tr></thead>
+        <thead><tr><th>案件番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>施工場所</th><th>車種 / 区分</th><th>金額</th><th>受取見込み${commissionSettings.confirmed ? "" : "（仮）"}</th><th>希望日</th><th>確定日</th><th>状況</th><th>操作</th></tr></thead>
         <tbody>
           ${list.map(o => `
             <tr>
@@ -988,9 +1001,10 @@ function renderOpJobs() {
               <td>${o.customerPref}${o.customerCity}</td>
               <td>${o.car}<br><span style="font-size:11px;color:var(--muted)">${o.carClass || "—"}${o.yani ? "＋やに" : ""}</span></td>
               <td>${yen(o.amount)}</td>
+              <td>${yen(contractorPayout(o.amount))}</td>
               <td>${o.desire}</td><td>${o.scheduled || "—"}</td><td>${soBadge(o.status)}</td>
               <td>${opJobAction(o)}</td>
-            </tr>`).join("") || `<tr><td colspan="11" style="color:var(--muted)">割り当てられた案件はありません</td></tr>`}
+            </tr>`).join("") || `<tr><td colspan="12" style="color:var(--muted)">割り当てられた案件はありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
