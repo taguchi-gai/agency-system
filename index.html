@@ -999,13 +999,13 @@ function openValuablesModal(soId) {
   const o = serviceOrders.find(x => x.id === soId);
   openModal(`
     <h2>貴重品確認 — ${o.id}</h2>
-    <div class="alert alert-warn">📢 施工前に、お客さま（${o.customer}）にこの画面を見せながら読み上げてご確認ください。</div>
+    <div class="alert alert-warn">📢 ご確認をいただきましたら、ご署名をお願いします。（お客さま「${o.customer}」にこの画面をお見せください）</div>
     <div class="card" style="background:#f8fafc;margin-bottom:14px">
-      車内に貴重品（財布・スマートフォン・貴金属類など）が残っていないか、お客さまご自身で確認いただきました。
-      施工中の車内の貴重品について、当社および施工代理店は責任を負いかねます。
+      ・車内に貴重品（財布・スマートフォン・貴金属類など）が残っていないことを確認しました。<br>
+      ・車体の傷について、施工前に確認しました。
     </div>
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:14px">
-      <input type="checkbox" id="valuables-check"> 上記内容をお客さまに読み上げ、確認いただきました
+      <input type="checkbox" id="valuables-check"> 上記内容を確認しました
     </label>
     <div class="form-group">
       <label>お客さまのご署名（画面に指またはタッチペンでお名前をご記入ください）</label>
