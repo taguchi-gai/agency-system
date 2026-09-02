@@ -163,6 +163,16 @@
 // =====================================================
 const TODAY = "2026-06-11";
 
+const PREFECTURES = [
+  "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
+  "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
+  "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県",
+  "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県",
+  "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+  "徳島県", "香川県", "愛媛県", "高知県",
+  "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
+];
+
 // 加盟店（最初は10社目標 → サンプル3社）
 let franchises = [
   { id: 1, name: "株式会社オートライフ関東", contact: "山田 太郎", tel: "03-1234-5678", region: "関東", contractDate: "2026-02-01", renewDate: "2027-01-31", target: 300 },
@@ -191,15 +201,17 @@ let contractors = [
 // 施工注文（取次店経由でお客さまから入る注文）
 const SO_STATUS = ["新規受付", "施工店確認中", "施工日確定", "貴重品確認済み", "施工完了"];
 // carClass: 軽 / 普通 / ワンボックス、yani: やにとりオプション、amount: 決済金額、payment: 決済状況
+// customerPref/customerCity: 施工現場（お客さま宅など）の住所。施工代理店の割り当ては、
+// 取次店の所在地ではなくこちらを起点に距離判定する（取次店と施工現場は別の都道府県のこともある）。
 let serviceOrders = [
-  { id: "SO-0008", date: "2026-06-10", shopId: 1, customer: "斎藤 様", customerTel: "090-1111-2222", car: "トヨタ アルファード", carClass: "ワンボックス", yani: false, amount: 20000, payment: "決済済み", desire: "2026-06-18", status: "新規受付", contractorId: null, scheduled: null, note: "ペット臭が気になるとのこと" },
-  { id: "SO-0007", date: "2026-06-09", shopId: 4, customer: "岡本 様", customerTel: "080-3333-4444", car: "ホンダ N-BOX", carClass: "軽", yani: true, amount: 20000, payment: "決済済み", desire: "2026-06-15", status: "施工店確認中", contractorId: 3, scheduled: null, note: "タバコ臭" },
-  { id: "SO-0006", date: "2026-06-07", shopId: 2, customer: "三浦 様", customerTel: "070-5555-6666", car: "日産 セレナ", carClass: "ワンボックス", yani: false, amount: 20000, payment: "決済済み", desire: "2026-06-14", status: "施工日確定", contractorId: 1, scheduled: "2026-06-14", note: "" },
-  { id: "SO-0005", date: "2026-06-03", shopId: 1, customer: "原田 様", customerTel: "090-7777-8888", car: "スバル フォレスター", carClass: "普通", yani: false, amount: 18000, payment: "決済済み", desire: "2026-06-08", status: "施工完了", contractorId: 2, scheduled: "2026-06-08", note: "" },
-  { id: "SO-0004", date: "2026-05-28", shopId: 5, customer: "村上 様", customerTel: "080-9999-0000", car: "マツダ CX-5", carClass: "普通", yani: true, amount: 23000, payment: "決済済み", desire: "2026-06-02", status: "施工完了", contractorId: 3, scheduled: "2026-06-02", note: "" },
-  { id: "SO-0003", date: "2026-05-20", shopId: 3, customer: "石川 様", customerTel: "090-1212-3434", car: "トヨタ プリウス", carClass: "普通", yani: false, amount: 18000, payment: "決済済み", desire: "2026-05-26", status: "施工完了", contractorId: 1, scheduled: "2026-05-26", note: "" },
-  { id: "SO-0002", date: "2026-05-12", shopId: 2, customer: "近藤 様", customerTel: "080-5656-7878", car: "スズキ スペーシア", carClass: "軽", yani: false, amount: 15000, payment: "決済済み", desire: "2026-05-18", status: "施工完了", contractorId: 1, scheduled: "2026-05-18", note: "" },
-  { id: "SO-0001", date: "2026-05-02", shopId: 4, customer: "遠藤 様", customerTel: "070-9090-1212", car: "BMW 3シリーズ", carClass: "普通", yani: false, amount: 18000, payment: "決済済み", desire: "2026-05-10", status: "施工完了", contractorId: 3, scheduled: "2026-05-10", note: "" },
+  { id: "SO-0008", date: "2026-06-10", shopId: 1, customer: "斎藤 様", customerTel: "090-1111-2222", customerPref: "千葉県", customerCity: "船橋市", car: "トヨタ アルファード", carClass: "ワンボックス", yani: false, amount: 20000, payment: "決済済み", desire: "2026-06-18", status: "新規受付", contractorId: null, scheduled: null, note: "ペット臭が気になるとのこと" },
+  { id: "SO-0007", date: "2026-06-09", shopId: 4, customer: "岡本 様", customerTel: "080-3333-4444", customerPref: "京都府", customerCity: "京都市伏見区", car: "ホンダ N-BOX", carClass: "軽", yani: true, amount: 20000, payment: "決済済み", desire: "2026-06-15", status: "施工店確認中", contractorId: 3, scheduled: null, note: "タバコ臭" },
+  { id: "SO-0006", date: "2026-06-07", shopId: 2, customer: "三浦 様", customerTel: "070-5555-6666", customerPref: "埼玉県", customerCity: "大宮区", car: "日産 セレナ", carClass: "ワンボックス", yani: false, amount: 20000, payment: "決済済み", desire: "2026-06-14", status: "施工日確定", contractorId: 1, scheduled: "2026-06-14", note: "" },
+  { id: "SO-0005", date: "2026-06-03", shopId: 1, customer: "原田 様", customerTel: "090-7777-8888", customerPref: "茨城県", customerCity: "つくば市", car: "スバル フォレスター", carClass: "普通", yani: false, amount: 18000, payment: "決済済み", desire: "2026-06-08", status: "施工完了", contractorId: 2, scheduled: "2026-06-08", note: "" },
+  { id: "SO-0004", date: "2026-05-28", shopId: 5, customer: "村上 様", customerTel: "080-9999-0000", customerPref: "兵庫県", customerCity: "神戸市", car: "マツダ CX-5", carClass: "普通", yani: true, amount: 23000, payment: "決済済み", desire: "2026-06-02", status: "施工完了", contractorId: 3, scheduled: "2026-06-02", note: "" },
+  { id: "SO-0003", date: "2026-05-20", shopId: 3, customer: "石川 様", customerTel: "090-1212-3434", customerPref: "神奈川県", customerCity: "横浜市", car: "トヨタ プリウス", carClass: "普通", yani: false, amount: 18000, payment: "決済済み", desire: "2026-05-26", status: "施工完了", contractorId: 1, scheduled: "2026-05-26", note: "" },
+  { id: "SO-0002", date: "2026-05-12", shopId: 2, customer: "近藤 様", customerTel: "080-5656-7878", customerPref: "埼玉県", customerCity: "さいたま市浦和区", car: "スズキ スペーシア", carClass: "軽", yani: false, amount: 15000, payment: "決済済み", desire: "2026-05-18", status: "施工完了", contractorId: 1, scheduled: "2026-05-18", note: "" },
+  { id: "SO-0001", date: "2026-05-02", shopId: 4, customer: "遠藤 様", customerTel: "070-9090-1212", customerPref: "大阪府", customerCity: "大阪市北区", car: "BMW 3シリーズ", carClass: "普通", yani: false, amount: 18000, payment: "決済済み", desire: "2026-05-10", status: "施工完了", contractorId: 3, scheduled: "2026-05-10", note: "" },
 ];
 
 // 消耗品（除菌消臭剤）
@@ -429,14 +441,14 @@ function renderHqSo() {
     ${flowHtml("施工完了").replace(/done/g, "")}
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>注文番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>車種</th><th>区分 / 金額</th><th>希望日</th><th>施工代理店</th><th>状況</th><th>操作</th></tr></thead>
+        <thead><tr><th>注文番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>施工場所</th><th>車種</th><th>区分 / 金額</th><th>希望日</th><th>施工代理店</th><th>状況</th><th>操作</th></tr></thead>
         <tbody>
           ${serviceOrders.map(o => `
             <tr>
               <td class="clickable link" onclick="showSoDetail('${o.id}')"><b>${o.id}</b></td>
               <td>${o.date}</td>
               <td>${shopById(o.shopId).name}</td>
-              <td>${o.customer}</td><td>${o.car}</td>
+              <td>${o.customer}</td><td>${o.customerPref}${o.customerCity}</td><td>${o.car}</td>
               <td>${o.carClass || "—"}${o.yani ? "＋やに" : ""}<br><span style="font-size:11px;color:var(--muted)">${yen(o.amount)} ${paymentBadge(o.payment)}</span></td>
               <td>${o.desire}</td>
               <td>${o.contractorId ? opById(o.contractorId).name : `<span style="color:var(--danger)">未割り当て</span>`}</td>
@@ -452,10 +464,10 @@ function hqSoAction(o) {
   if (o.status === "施工店確認中") return `<span style="font-size:11px;color:var(--muted)">施工店の回答待ち</span>`;
   return "—";
 }
-// 都道府県が一致する施工代理店を「近い」とみなす簡易距離モック（本番では緯度経度で算出）
-function mockDistance(shopPref, c) {
-  if (c.prefs.includes(shopPref)) return 0 + (c.id % 5);
-  if (c.region && shopPref) return 30 + (c.id * 7) % 50;
+// 都道府県が一致する施工代理店を「近い」とみなす簡易距離モック（本番では施工現場住所を緯度経度に変換して算出）
+function mockDistance(customerPref, c) {
+  if (c.prefs.includes(customerPref)) return 0 + (c.id % 5);
+  if (c.region && customerPref) return 30 + (c.id * 7) % 50;
   return 999;
 }
 function openAssignModal(soId) {
@@ -463,14 +475,13 @@ function openAssignModal(soId) {
 }
 function renderAssignList(soId, prefFilter) {
   const o = serviceOrders.find(x => x.id === soId);
-  const shopPref = shopById(o.shopId).region;
   const allPrefs = [...new Set(contractors.flatMap(c => c.prefs))].sort();
   let list = contractors.filter(c => c.status === "稼働中");
   if (prefFilter) list = list.filter(c => c.prefs.includes(prefFilter));
-  list = list.map(c => ({ c, dist: mockDistance(shopPref, c) })).sort((a, b) => a.dist - b.dist);
+  list = list.map(c => ({ c, dist: mockDistance(o.customerPref, c) })).sort((a, b) => a.dist - b.dist);
   openModal(`
     <h2>施工代理店の割り当て — ${o.id}</h2>
-    <div class="alert alert-info">📍 取次店「${shopById(o.shopId).name}」（${shopPref}）のお客さまです。距離が近い順に表示しています。</div>
+    <div class="alert alert-info">📍 施工現場：<b>${o.customerPref}${o.customerCity}</b>（お客さま「${o.customer}」／取次：${shopById(o.shopId).name}）。施工現場からの距離が近い順に表示しています。</div>
     <div class="form-grid">
       <div class="form-group full"><label>都道府県で絞り込み</label>
         <select onchange="renderAssignList('${o.id}', this.value)">
@@ -514,6 +525,7 @@ function showSoDetail(soId) {
       <div class="detail-item"><div class="k">受付日</div><div class="v">${o.date}</div></div>
       <div class="detail-item"><div class="k">取次店</div><div class="v">${shop.name}（${shop.region} / ${fcById(shop.franchiseId).name} 系列）</div></div>
       <div class="detail-item"><div class="k">お客さま</div><div class="v">${o.customer}（${o.customerTel}）</div></div>
+      <div class="detail-item"><div class="k">施工場所</div><div class="v">${o.customerPref}${o.customerCity}</div></div>
       <div class="detail-item"><div class="k">車種 / 区分</div><div class="v">${o.car} / ${o.carClass || "未判定"}${o.yani ? "（＋やにとり）" : ""}</div></div>
       <div class="detail-item"><div class="k">決済金額</div><div class="v">${yen(o.amount)} ${paymentBadge(o.payment)}</div></div>
       <div class="detail-item"><div class="k">希望日 / 確定日</div><div class="v">${o.desire} / ${o.scheduled || "未確定"}</div></div>
@@ -790,6 +802,13 @@ function renderShopForm() {
         <div class="form-grid" style="grid-template-columns:1fr">
           <div class="form-group"><label>お名前 *</label><input type="text" id="cf-name" placeholder="例）山田 太郎"></div>
           <div class="form-group"><label>電話番号 *</label><input type="text" id="cf-tel" placeholder="例）090-1234-5678"></div>
+          <div class="form-group"><label>施工場所の都道府県 *</label>
+            <select id="cf-pref">
+              <option value="">選択してください</option>
+              ${PREFECTURES.map(p => `<option value="${p}" ${p === s.region ? "selected" : ""}>${p}</option>`).join("")}
+            </select>
+          </div>
+          <div class="form-group"><label>施工場所の市区町村 *</label><input type="text" id="cf-city" placeholder="例）さいたま市大宮区"></div>
           <div class="form-group"><label>車種 *</label><input type="text" id="cf-car" placeholder="例）トヨタ プリウス" oninput="onCarInput()">
             <div id="cf-car-judge" style="font-size:12px;color:var(--muted)">車種を入力すると区分を自動判定します</div>
           </div>
@@ -847,6 +866,7 @@ function updatePriceSummary() {
 function goToPayment() {
   const name = $("cf-name").value.trim(), tel = $("cf-tel").value.trim();
   if (!name || !tel) { alert("お名前と電話番号を入力してください"); return; }
+  if (!$("cf-pref").value || !$("cf-city").value.trim()) { alert("施工場所の住所（都道府県・市区町村）を入力してください"); return; }
   if (!$("cf-car").value.trim()) { alert("車種を入力してください"); return; }
   const a = currentOrderAmount();
   if (a.base == null) { alert("車両区分を選択してください"); return; }
@@ -886,7 +906,8 @@ function confirmPayment() {
   const id = "SO-" + String(num).padStart(4, "0");
   serviceOrders.unshift({
     id, date: TODAY, shopId: session.entityId,
-    customer: $("cf-name").value.trim() + " 様", customerTel: $("cf-tel").value.trim(), car: $("cf-car").value.trim(),
+    customer: $("cf-name").value.trim() + " 様", customerTel: $("cf-tel").value.trim(),
+    customerPref: $("cf-pref").value, customerCity: $("cf-city").value.trim(), car: $("cf-car").value.trim(),
     carClass: a.cls, yani: a.yani, amount: a.total, payment: "決済済み",
     desire: $("cf-date").value, status: "新規受付", contractorId: null, scheduled: null,
     note: $("cf-note").value,
@@ -906,9 +927,9 @@ function renderShopOrders() {
     <div class="page-desc">自店経由の申し込みと進捗を確認できます（他店の情報は見えません）</div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>受付番号</th><th>受付日</th><th>お客さま</th><th>車種</th><th>区分</th><th>金額</th><th>決済</th><th>希望日</th><th>状況</th></tr></thead>
+        <thead><tr><th>受付番号</th><th>受付日</th><th>お客さま</th><th>施工場所</th><th>車種</th><th>区分</th><th>金額</th><th>決済</th><th>希望日</th><th>状況</th></tr></thead>
         <tbody>
-          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.car}</td><td>${o.carClass || "—"}${o.yani ? '<br><span style="font-size:11px;color:var(--muted)">＋やにとり</span>' : ""}</td><td>${yen(o.amount)}</td><td>${paymentBadge(o.payment)}</td><td>${o.desire}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--muted)">取次はまだありません</td></tr>`}
+          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.customerPref}${o.customerCity}</td><td>${o.car}</td><td>${o.carClass || "—"}${o.yani ? '<br><span style="font-size:11px;color:var(--muted)">＋やにとり</span>' : ""}</td><td>${yen(o.amount)}</td><td>${paymentBadge(o.payment)}</td><td>${o.desire}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="10" style="color:var(--muted)">取次はまだありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
@@ -924,17 +945,18 @@ function renderOpJobs() {
   el.innerHTML = `
     <div class="page-title">施工案件</div>
     <div class="page-desc">本部から割り当てられた案件です。対応可否の回答と施工完了の報告を行います</div>
-    ${pending.map(o => `<div class="alert alert-warn">⏳ <b>${o.id}</b>（${o.car} / 希望日 ${o.desire}）の対応可否を回答してください。</div>`).join("")}
+    ${pending.map(o => `<div class="alert alert-warn">⏳ <b>${o.id}</b>（${o.customerPref}${o.customerCity} / ${o.car} / 希望日 ${o.desire}）の対応可否を回答してください。</div>`).join("")}
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>案件番号</th><th>受付日</th><th>お客さま</th><th>車種</th><th>希望日</th><th>確定日</th><th>状況</th><th>操作</th></tr></thead>
+        <thead><tr><th>案件番号</th><th>受付日</th><th>お客さま</th><th>施工場所</th><th>車種</th><th>希望日</th><th>確定日</th><th>状況</th><th>操作</th></tr></thead>
         <tbody>
           ${list.map(o => `
             <tr>
               <td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}<br><span style="font-size:11px;color:var(--muted)">${o.customerTel}</span></td>
+              <td>${o.customerPref}${o.customerCity}</td>
               <td>${o.car}</td><td>${o.desire}</td><td>${o.scheduled || "—"}</td><td>${soBadge(o.status)}</td>
               <td>${opJobAction(o)}</td>
-            </tr>`).join("") || `<tr><td colspan="8" style="color:var(--muted)">割り当てられた案件はありません</td></tr>`}
+            </tr>`).join("") || `<tr><td colspan="9" style="color:var(--muted)">割り当てられた案件はありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
