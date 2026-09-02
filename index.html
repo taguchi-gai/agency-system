@@ -125,6 +125,9 @@
   .customer-form-wrap { max-width: 520px; margin: 0 auto; }
   .qr-banner { background: #fff; border: 2px dashed var(--primary); border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; }
   .qr-banner b { color: var(--primary); }
+  .price-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-top: 14px; font-size: 13px; }
+  .price-row { display: flex; justify-content: space-between; padding: 4px 0; }
+  .price-row.total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; font-weight: bold; font-size: 15px; color: var(--primary-dark); }
   .two-col { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: start; }
   @media (max-width: 1000px) { .two-col { grid-template-columns: 1fr; } }
 </style>
@@ -153,6 +156,7 @@
 
 <div class="modal-bg" id="modal-bg"><div class="modal" id="modal-content"></div></div>
 
+<script src="car-dictionary.js"></script>
 <script>
 // =====================================================
 // サンプルデータ
@@ -186,15 +190,16 @@ let contractors = [
 
 // 施工注文（取次店経由でお客さまから入る注文）
 const SO_STATUS = ["新規受付", "施工店確認中", "施工日確定", "貴重品確認済み", "施工完了"];
+// carClass: 軽 / 普通 / ワンボックス、yani: やにとりオプション、amount: 決済金額、payment: 決済状況
 let serviceOrders = [
-  { id: "SO-0008", date: "2026-06-10", shopId: 1, customer: "斎藤 様", customerTel: "090-1111-2222", car: "トヨタ アルファード", desire: "2026-06-18", status: "新規受付", contractorId: null, scheduled: null, note: "ペット臭が気になるとのこと" },
-  { id: "SO-0007", date: "2026-06-09", shopId: 4, customer: "岡本 様", customerTel: "080-3333-4444", car: "ホンダ N-BOX", desire: "2026-06-15", status: "施工店確認中", contractorId: 3, scheduled: null, note: "タバコ臭" },
-  { id: "SO-0006", date: "2026-06-07", shopId: 2, customer: "三浦 様", customerTel: "070-5555-6666", car: "日産 セレナ", desire: "2026-06-14", status: "施工日確定", contractorId: 1, scheduled: "2026-06-14", note: "" },
-  { id: "SO-0005", date: "2026-06-03", shopId: 1, customer: "原田 様", customerTel: "090-7777-8888", car: "スバル フォレスター", desire: "2026-06-08", status: "施工完了", contractorId: 2, scheduled: "2026-06-08", note: "" },
-  { id: "SO-0004", date: "2026-05-28", shopId: 5, customer: "村上 様", customerTel: "080-9999-0000", car: "マツダ CX-5", desire: "2026-06-02", status: "施工完了", contractorId: 3, scheduled: "2026-06-02", note: "" },
-  { id: "SO-0003", date: "2026-05-20", shopId: 3, customer: "石川 様", customerTel: "090-1212-3434", car: "トヨタ プリウス", desire: "2026-05-26", status: "施工完了", contractorId: 1, scheduled: "2026-05-26", note: "" },
-  { id: "SO-0002", date: "2026-05-12", shopId: 2, customer: "近藤 様", customerTel: "080-5656-7878", car: "スズキ スペーシア", desire: "2026-05-18", status: "施工完了", contractorId: 1, scheduled: "2026-05-18", note: "" },
-  { id: "SO-0001", date: "2026-05-02", shopId: 4, customer: "遠藤 様", customerTel: "070-9090-1212", car: "BMW 3シリーズ", desire: "2026-05-10", status: "施工完了", contractorId: 3, scheduled: "2026-05-10", note: "" },
+  { id: "SO-0008", date: "2026-06-10", shopId: 1, customer: "斎藤 様", customerTel: "090-1111-2222", car: "トヨタ アルファード", carClass: "ワンボックス", yani: false, amount: 20000, payment: "決済済み", desire: "2026-06-18", status: "新規受付", contractorId: null, scheduled: null, note: "ペット臭が気になるとのこと" },
+  { id: "SO-0007", date: "2026-06-09", shopId: 4, customer: "岡本 様", customerTel: "080-3333-4444", car: "ホンダ N-BOX", carClass: "軽", yani: true, amount: 20000, payment: "決済済み", desire: "2026-06-15", status: "施工店確認中", contractorId: 3, scheduled: null, note: "タバコ臭" },
+  { id: "SO-0006", date: "2026-06-07", shopId: 2, customer: "三浦 様", customerTel: "070-5555-6666", car: "日産 セレナ", carClass: "ワンボックス", yani: false, amount: 20000, payment: "決済済み", desire: "2026-06-14", status: "施工日確定", contractorId: 1, scheduled: "2026-06-14", note: "" },
+  { id: "SO-0005", date: "2026-06-03", shopId: 1, customer: "原田 様", customerTel: "090-7777-8888", car: "スバル フォレスター", carClass: "普通", yani: false, amount: 18000, payment: "決済済み", desire: "2026-06-08", status: "施工完了", contractorId: 2, scheduled: "2026-06-08", note: "" },
+  { id: "SO-0004", date: "2026-05-28", shopId: 5, customer: "村上 様", customerTel: "080-9999-0000", car: "マツダ CX-5", carClass: "普通", yani: true, amount: 23000, payment: "決済済み", desire: "2026-06-02", status: "施工完了", contractorId: 3, scheduled: "2026-06-02", note: "" },
+  { id: "SO-0003", date: "2026-05-20", shopId: 3, customer: "石川 様", customerTel: "090-1212-3434", car: "トヨタ プリウス", carClass: "普通", yani: false, amount: 18000, payment: "決済済み", desire: "2026-05-26", status: "施工完了", contractorId: 1, scheduled: "2026-05-26", note: "" },
+  { id: "SO-0002", date: "2026-05-12", shopId: 2, customer: "近藤 様", customerTel: "080-5656-7878", car: "スズキ スペーシア", carClass: "軽", yani: false, amount: 15000, payment: "決済済み", desire: "2026-05-18", status: "施工完了", contractorId: 1, scheduled: "2026-05-18", note: "" },
+  { id: "SO-0001", date: "2026-05-02", shopId: 4, customer: "遠藤 様", customerTel: "070-9090-1212", car: "BMW 3シリーズ", carClass: "普通", yani: false, amount: 18000, payment: "決済済み", desire: "2026-05-10", status: "施工完了", contractorId: 3, scheduled: "2026-05-10", note: "" },
 ];
 
 // 消耗品（除菌消臭剤）
@@ -243,6 +248,7 @@ function soBadge(s) {
 }
 function poBadge(s) { return `<span class="badge ${s === "出荷済" ? "b-green" : "b-orange"}">${s}</span>`; }
 function paidBadge(s) { return `<span class="badge ${s === "入金済" ? "b-green" : "b-red"}">${s}</span>`; }
+function paymentBadge(s) { return s ? `<span class="badge ${s === "決済済み" ? "b-green" : "b-orange"}">${s}</span>` : `<span class="badge b-gray">未決済</span>`; }
 function stBadge(s) {
   const map = { "稼働中": "b-green", "準備中": "b-orange", "休眠": "b-orange", "解約": "b-red" };
   return `<span class="badge ${map[s] || 'b-gray'}">${s}</span>`;
@@ -423,14 +429,16 @@ function renderHqSo() {
     ${flowHtml("施工完了").replace(/done/g, "")}
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>注文番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>車種</th><th>希望日</th><th>施工代理店</th><th>状況</th><th>操作</th></tr></thead>
+        <thead><tr><th>注文番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>車種</th><th>区分 / 金額</th><th>希望日</th><th>施工代理店</th><th>状況</th><th>操作</th></tr></thead>
         <tbody>
           ${serviceOrders.map(o => `
             <tr>
               <td class="clickable link" onclick="showSoDetail('${o.id}')"><b>${o.id}</b></td>
               <td>${o.date}</td>
               <td>${shopById(o.shopId).name}</td>
-              <td>${o.customer}</td><td>${o.car}</td><td>${o.desire}</td>
+              <td>${o.customer}</td><td>${o.car}</td>
+              <td>${o.carClass || "—"}${o.yani ? "＋やに" : ""}<br><span style="font-size:11px;color:var(--muted)">${yen(o.amount)} ${paymentBadge(o.payment)}</span></td>
+              <td>${o.desire}</td>
               <td>${o.contractorId ? opById(o.contractorId).name : `<span style="color:var(--danger)">未割り当て</span>`}</td>
               <td>${soBadge(o.status)}</td>
               <td>${hqSoAction(o)}</td>
@@ -506,7 +514,8 @@ function showSoDetail(soId) {
       <div class="detail-item"><div class="k">受付日</div><div class="v">${o.date}</div></div>
       <div class="detail-item"><div class="k">取次店</div><div class="v">${shop.name}（${shop.region} / ${fcById(shop.franchiseId).name} 系列）</div></div>
       <div class="detail-item"><div class="k">お客さま</div><div class="v">${o.customer}（${o.customerTel}）</div></div>
-      <div class="detail-item"><div class="k">車種</div><div class="v">${o.car}</div></div>
+      <div class="detail-item"><div class="k">車種 / 区分</div><div class="v">${o.car} / ${o.carClass || "未判定"}${o.yani ? "（＋やにとり）" : ""}</div></div>
+      <div class="detail-item"><div class="k">決済金額</div><div class="v">${yen(o.amount)} ${paymentBadge(o.payment)}</div></div>
       <div class="detail-item"><div class="k">希望日 / 確定日</div><div class="v">${o.desire} / ${o.scheduled || "未確定"}</div></div>
       <div class="detail-item"><div class="k">施工代理店</div><div class="v">${o.contractorId ? opById(o.contractorId).name : "未割り当て"}</div></div>
       <div class="detail-item"><div class="k">貴重品確認</div><div class="v">${SO_STATUS.indexOf(o.status) >= SO_STATUS.indexOf("貴重品確認済み") ? '<span class="badge b-purple">確認済み</span>' : '<span class="badge b-gray">未確認</span>'}</div></div>
@@ -781,32 +790,111 @@ function renderShopForm() {
         <div class="form-grid" style="grid-template-columns:1fr">
           <div class="form-group"><label>お名前 *</label><input type="text" id="cf-name" placeholder="例）山田 太郎"></div>
           <div class="form-group"><label>電話番号 *</label><input type="text" id="cf-tel" placeholder="例）090-1234-5678"></div>
-          <div class="form-group"><label>車種</label><input type="text" id="cf-car" placeholder="例）トヨタ プリウス"></div>
+          <div class="form-group"><label>車種 *</label><input type="text" id="cf-car" placeholder="例）トヨタ プリウス" oninput="onCarInput()">
+            <div id="cf-car-judge" style="font-size:12px;color:var(--muted)">車種を入力すると区分を自動判定します</div>
+          </div>
+          <div class="form-group"><label>車両区分（自動判定・変更可）</label>
+            <select id="cf-class" onchange="updatePriceSummary()">
+              <option value="">— 未判定 —</option>
+              ${Object.keys(CAR_CLASS_PRICE).map(k => `<option value="${k}">${k}（${yen(CAR_CLASS_PRICE[k])}）</option>`).join("")}
+            </select>
+          </div>
+          <div class="form-group"><label>オプション</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:normal;color:var(--text)">
+              <input type="checkbox" id="cf-yani" onchange="updatePriceSummary()"> やにとり（タバコのヤニ除去）＋${yen(YANI_OPTION_PRICE)}
+            </label>
+          </div>
           <div class="form-group"><label>施工希望日</label><input type="date" id="cf-date" min="${addBusinessDays(TODAY, 3)}" value="${addBusinessDays(TODAY, 3)}">
             <small style="color:var(--muted);font-size:11px">申込日から3営業日後（土日祝を除く）以降からお選びいただけます</small>
           </div>
           <div class="form-group"><label>気になる点（任意）</label><textarea id="cf-note" rows="2" placeholder="例）タバコ臭・ペット臭など"></textarea></div>
         </div>
-        <button class="btn btn-primary" style="width:100%;margin-top:16px;padding:12px" onclick="submitCustomerOrder()">この内容で申し込む</button>
+        <div id="cf-price" class="price-box"></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:16px;padding:12px" onclick="goToPayment()">💳 決済に進む</button>
       </div>
     </div>`;
+  updatePriceSummary();
 }
-function submitCustomerOrder() {
+function onCarInput() {
+  const r = judgeCarClass($("cf-car").value);
+  const el = $("cf-car-judge");
+  if (!$("cf-car").value.trim()) {
+    el.innerHTML = "車種を入力すると区分を自動判定します";
+    $("cf-class").value = "";
+  } else if (r) {
+    el.innerHTML = `✅ <b style="color:var(--success)">${r.carClass}</b> と判定（${r.entry.maker} ${r.entry.model}）${r.entry.note ? `<br><span style="color:var(--warning)">⚠ ${r.entry.note}</span>` : ""}`;
+    $("cf-class").value = r.carClass;
+  } else {
+    el.innerHTML = `<span style="color:var(--warning)">⚠ 辞書に見つかりませんでした。区分を手動で選択してください</span>`;
+    $("cf-class").value = "";
+  }
+  updatePriceSummary();
+}
+function currentOrderAmount() {
+  const cls = $("cf-class").value;
+  const base = cls ? CAR_CLASS_PRICE[cls] : null;
+  const yani = $("cf-yani").checked;
+  return { cls, base, yani, total: base == null ? null : base + (yani ? YANI_OPTION_PRICE : 0) };
+}
+function updatePriceSummary() {
+  const a = currentOrderAmount();
+  $("cf-price").innerHTML = a.base == null
+    ? `<div style="color:var(--muted)">車両区分を選ぶと金額が表示されます</div>`
+    : `<div class="price-row"><span>施工料金（${a.cls}）</span><span>${yen(a.base)}</span></div>
+       ${a.yani ? `<div class="price-row"><span>やにとりオプション</span><span>${yen(YANI_OPTION_PRICE)}</span></div>` : ""}
+       <div class="price-row total"><span>お支払い合計（税込）</span><span>${yen(a.total)}</span></div>`;
+}
+function goToPayment() {
   const name = $("cf-name").value.trim(), tel = $("cf-tel").value.trim();
   if (!name || !tel) { alert("お名前と電話番号を入力してください"); return; }
+  if (!$("cf-car").value.trim()) { alert("車種を入力してください"); return; }
+  const a = currentOrderAmount();
+  if (a.base == null) { alert("車両区分を選択してください"); return; }
   const minDate = addBusinessDays(TODAY, 3);
   if ($("cf-date").value < minDate) { alert("施工希望日は申込日から3営業日後（土日祝を除く）以降を選択してください"); return; }
+  openPaymentModal();
+}
+// 決済画面（モック：見た目のみ。実際の決済連携は本番開発フェーズで決済代行会社を決めてから）
+function openPaymentModal() {
+  const a = currentOrderAmount();
+  openModal(`
+    <h2>💳 お支払い</h2>
+    <div class="alert alert-info" style="font-size:12px">※ モック画面です。実際のカード情報は入力しないでください。本番では決済代行会社の画面（または埋め込みフォーム）に置き換わります。</div>
+    <div class="price-box" style="margin-bottom:16px">
+      <div class="price-row"><span>施工料金（${a.cls}）</span><span>${yen(a.base)}</span></div>
+      ${a.yani ? `<div class="price-row"><span>やにとりオプション</span><span>${yen(YANI_OPTION_PRICE)}</span></div>` : ""}
+      <div class="price-row total"><span>お支払い合計</span><span>${yen(a.total)}</span></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>カード番号</label><input type="text" placeholder="4242 4242 4242 4242" inputmode="numeric"></div>
+      <div class="form-group"><label>有効期限</label><input type="text" placeholder="MM / YY"></div>
+      <div class="form-group"><label>セキュリティコード</label><input type="text" placeholder="CVC" inputmode="numeric"></div>
+      <div class="form-group full"><label>カード名義</label><input type="text" placeholder="TARO YAMADA"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;font-size:11px;color:var(--muted);align-items:center">
+      <span class="badge b-gray">VISA</span><span class="badge b-gray">Mastercard</span><span class="badge b-gray">JCB</span><span class="badge b-gray">AMEX</span>
+      <span style="margin-left:auto">🔒 SSL暗号化通信</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">戻る</button>
+      <button class="btn btn-success" onclick="confirmPayment()">${yen(a.total)} を支払う</button>
+    </div>`);
+}
+function confirmPayment() {
+  const a = currentOrderAmount();
   const num = serviceOrders.length + 1;
+  const id = "SO-" + String(num).padStart(4, "0");
   serviceOrders.unshift({
-    id: "SO-" + String(num).padStart(4, "0"), date: TODAY, shopId: session.entityId,
-    customer: name + " 様", customerTel: tel, car: $("cf-car").value || "未記入",
+    id, date: TODAY, shopId: session.entityId,
+    customer: $("cf-name").value.trim() + " 様", customerTel: $("cf-tel").value.trim(), car: $("cf-car").value.trim(),
+    carClass: a.cls, yani: a.yani, amount: a.total, payment: "決済済み",
     desire: $("cf-date").value, status: "新規受付", contractorId: null, scheduled: null,
     note: $("cf-note").value,
   });
   renderAll();
   openModal(`
-    <h2>✅ 申し込みを受け付けました</h2>
-    <div class="alert alert-info">本部にて確認のうえ、施工担当店からご連絡いたします。<br>受付番号：<b>SO-${String(num).padStart(4, "0")}</b></div>
+    <h2>✅ お支払いが完了しました</h2>
+    <div class="alert alert-info">申し込みを受け付けました。本部にて確認のうえ、施工担当店からご連絡いたします。<br>受付番号：<b>${id}</b>　お支払い金額：<b>${yen(a.total)}</b></div>
     <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">閉じる</button></div>`);
 }
 
@@ -818,9 +906,9 @@ function renderShopOrders() {
     <div class="page-desc">自店経由の申し込みと進捗を確認できます（他店の情報は見えません）</div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>受付番号</th><th>受付日</th><th>お客さま</th><th>車種</th><th>希望日</th><th>状況</th></tr></thead>
+        <thead><tr><th>受付番号</th><th>受付日</th><th>お客さま</th><th>車種</th><th>区分</th><th>金額</th><th>決済</th><th>希望日</th><th>状況</th></tr></thead>
         <tbody>
-          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.car}</td><td>${o.desire}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="6" style="color:var(--muted)">取次はまだありません</td></tr>`}
+          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.car}</td><td>${o.carClass || "—"}${o.yani ? '<br><span style="font-size:11px;color:var(--muted)">＋やにとり</span>' : ""}</td><td>${yen(o.amount)}</td><td>${paymentBadge(o.payment)}</td><td>${o.desire}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--muted)">取次はまだありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
