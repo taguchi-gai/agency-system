@@ -162,6 +162,8 @@
 // =====================================================
 // サンプルデータ
 // =====================================================
+// モック固定の「本日」。サンプルデータとの整合性のため固定日付にしている。
+// 新規注文の注文日などは自動でこの値が入る仕組みで、本番では実際の当日の日付になる。
 const TODAY = "2026-06-11";
 
 // 本部・取次店・施工代理店への配分（手数料）率。請求先・料率とも本部でまだ確定していないため
@@ -272,6 +274,9 @@ function soBadge(s) {
   return `<span class="badge ${map[s]}">${s}</span>`;
 }
 function poBadge(s) { return `<span class="badge ${s === "出荷済" ? "b-green" : "b-orange"}">${s}</span>`; }
+// 施工代理店（発注した側）から見ると「受注」は本部視点の言葉で紛らわしいため、
+// 内部のステータス値は共通のまま、施工代理店の画面だけ表示ラベルを変える。
+function opPoBadge(s) { return `<span class="badge ${s === "出荷済" ? "b-green" : "b-orange"}">${s === "受注" ? "発注済み（本部確認中）" : "出荷済み"}</span>`; }
 function paidBadge(s) { return `<span class="badge ${s === "入金済" ? "b-green" : "b-red"}">${s}</span>`; }
 function paymentBadge(s) { return s ? `<span class="badge ${s === "決済済み" ? "b-green" : "b-orange"}">${s}</span>` : `<span class="badge b-gray">未決済</span>`; }
 function stBadge(s) {
@@ -1108,7 +1113,7 @@ function renderOpPo() {
       <table>
         <thead><tr><th>注文番号</th><th>注文日</th><th>商品</th><th>数量</th><th>金額</th><th>入金</th><th>状況</th></tr></thead>
         <tbody>
-          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${prodById(o.productId).name}</td><td>${o.qty}</td><td>${yen(poAmount(o))}</td><td>${paidBadge(o.paid)}</td><td>${poBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="7" style="color:var(--muted)">注文履歴はありません</td></tr>`}
+          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${prodById(o.productId).name}</td><td>${o.qty}</td><td>${yen(poAmount(o))}</td><td>${paidBadge(o.paid)}</td><td>${opPoBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="7" style="color:var(--muted)">注文履歴はありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
