@@ -530,7 +530,16 @@ function showSoDetail(soId) {
       <div class="detail-item"><div class="k">決済金額</div><div class="v">${yen(o.amount)} ${paymentBadge(o.payment)}</div></div>
       <div class="detail-item"><div class="k">希望日 / 確定日</div><div class="v">${o.desire} / ${o.scheduled || "未確定"}</div></div>
       <div class="detail-item"><div class="k">施工代理店</div><div class="v">${o.contractorId ? opById(o.contractorId).name : "未割り当て"}</div></div>
-      <div class="detail-item"><div class="k">貴重品確認</div><div class="v">${SO_STATUS.indexOf(o.status) >= SO_STATUS.indexOf("貴重品確認済み") ? '<span class="badge b-purple">確認済み</span>' : '<span class="badge b-gray">未確認</span>'}</div></div>
+      <div class="detail-item" style="grid-column:1/-1"><div class="k">貴重品確認</div>
+        <div class="v">
+          ${SO_STATUS.indexOf(o.status) >= SO_STATUS.indexOf("貴重品確認済み") ? '<span class="badge b-purple">確認済み</span>' : '<span class="badge b-gray">未確認</span>'}
+          ${o.valuablesSignatureData ? `
+            <div style="margin-top:8px">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">お客さま署名（確認日：${o.valuablesSignedAt}）</div>
+              <img src="${o.valuablesSignatureData}" style="border:1px solid var(--border);border-radius:6px;background:#fff;max-width:280px;display:block">
+            </div>` : ""}
+        </div>
+      </div>
     </div>
     ${o.note ? `<div class="alert alert-warn">📌 ${o.note}</div>` : ""}
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">閉じる</button></div>`);
@@ -980,27 +989,67 @@ function declineJob(soId) {
   renderAll();
   alert("対応不可として本部に戻しました。本部が別の施工代理店を割り当てます。");
 }
+// 貴重品確認は施工代理店の自己申告ではなく、その場でお客さまにタブレット等で
+// 署名してもらい、送信と同時に本部にも記録が残る形にする（施工代理店だけの判断で
+// ステータスを進められないようにするための証跡）。
+let sigCtx = null, sigDrawing = false, sigHasDrawn = false;
+
 function openValuablesModal(soId) {
   const o = serviceOrders.find(x => x.id === soId);
   openModal(`
     <h2>貴重品確認 — ${o.id}</h2>
-    <div class="alert alert-warn">📢 施工前に、お客さま（${o.customer}）へ以下を読み上げてご確認ください。</div>
+    <div class="alert alert-warn">📢 施工前に、お客さま（${o.customer}）にこの画面を見せながら読み上げてご確認ください。</div>
     <div class="card" style="background:#f8fafc;margin-bottom:14px">
       車内に貴重品（財布・スマートフォン・貴金属類など）が残っていないか、お客さまご自身で確認いただきました。
       施工中の車内の貴重品について、当社および施工代理店は責任を負いかねます。
     </div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:14px">
       <input type="checkbox" id="valuables-check"> 上記内容をお客さまに読み上げ、確認いただきました
     </label>
+    <div class="form-group">
+      <label>お客さまのご署名（画面に指またはタッチペンでお名前をご記入ください）</label>
+      <canvas id="sig-pad" width="560" height="160" style="border:1px solid var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;max-width:560px;display:block;cursor:crosshair"></canvas>
+      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px;align-self:flex-start" onclick="clearSignature()">✎ 署名をやり直す</button>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
-      <button class="btn btn-primary" onclick="submitValuablesCheck('${o.id}')">確認済みとして送信</button>
+      <button class="btn btn-primary" onclick="submitValuablesCheck('${o.id}')">この内容で本部に送信</button>
     </div>`);
+  setupSignaturePad();
+}
+function setupSignaturePad() {
+  const canvas = $("sig-pad");
+  sigCtx = canvas.getContext("2d");
+  sigCtx.lineWidth = 2.5; sigCtx.lineCap = "round"; sigCtx.strokeStyle = "#2c3e50";
+  sigDrawing = false; sigHasDrawn = false;
+  const posOf = e => {
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: (cx - rect.left) * (canvas.width / rect.width), y: (cy - rect.top) * (canvas.height / rect.height) };
+  };
+  const start = e => { sigDrawing = true; sigHasDrawn = true; const p = posOf(e); sigCtx.beginPath(); sigCtx.moveTo(p.x, p.y); e.preventDefault(); };
+  const move = e => { if (!sigDrawing) return; const p = posOf(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); e.preventDefault(); };
+  const end = () => { sigDrawing = false; };
+  canvas.addEventListener("mousedown", start);
+  canvas.addEventListener("mousemove", move);
+  canvas.addEventListener("mouseup", end);
+  canvas.addEventListener("mouseleave", end);
+  canvas.addEventListener("touchstart", start, { passive: false });
+  canvas.addEventListener("touchmove", move, { passive: false });
+  canvas.addEventListener("touchend", end);
+}
+function clearSignature() {
+  if (sigCtx) sigCtx.clearRect(0, 0, $("sig-pad").width, $("sig-pad").height);
+  sigHasDrawn = false;
 }
 function submitValuablesCheck(soId) {
   if (!$("valuables-check").checked) { alert("チェックボックスにチェックを入れてください"); return; }
+  if (!sigHasDrawn) { alert("お客さまのご署名をご記入ください"); return; }
   const o = serviceOrders.find(x => x.id === soId);
   o.status = "貴重品確認済み";
+  o.valuablesSignatureData = $("sig-pad").toDataURL("image/png");
+  o.valuablesSignedAt = TODAY; // モックのため申込日を代用。本番では送信時刻を記録
   closeModal(); renderAll();
 }
 function completeJob(soId) {
