@@ -200,7 +200,7 @@ let contractors = [
 ];
 
 // 施工注文（取次店経由でお客さまから入る注文）
-const SO_STATUS = ["新規受付", "施工店確認中", "施工日確定", "貴重品確認済み", "施工完了"];
+const SO_STATUS = ["新規受付", "施工店確認中", "施工日確定", "施工前確認済み", "施工完了"];
 // carClass: 軽 / 普通 / ワンボックス、yani: やにとりオプション、amount: 決済金額、payment: 決済状況
 // customerPref/customerCity: 施工現場（お客さま宅など）の住所。施工代理店の割り当ては、
 // 取次店の所在地ではなくこちらを起点に距離判定する（取次店と施工現場は別の都道府県のこともある）。
@@ -256,7 +256,7 @@ const poAmount = o => {
 };
 
 function soBadge(s) {
-  const map = { "新規受付": "b-red", "施工店確認中": "b-orange", "施工日確定": "b-blue", "貴重品確認済み": "b-purple", "施工完了": "b-green" };
+  const map = { "新規受付": "b-red", "施工店確認中": "b-orange", "施工日確定": "b-blue", "施工前確認済み": "b-purple", "施工完了": "b-green" };
   return `<span class="badge ${map[s]}">${s}</span>`;
 }
 function poBadge(s) { return `<span class="badge ${s === "出荷済" ? "b-green" : "b-orange"}">${s}</span>`; }
@@ -531,9 +531,9 @@ function showSoDetail(soId) {
       <div class="detail-item"><div class="k">決済金額</div><div class="v">${yen(o.amount)} ${paymentBadge(o.payment)}</div></div>
       <div class="detail-item"><div class="k">希望日 / 確定日</div><div class="v">${o.desire} / ${o.scheduled || "未確定"}</div></div>
       <div class="detail-item"><div class="k">施工代理店</div><div class="v">${o.contractorId ? opById(o.contractorId).name : "未割り当て"}</div></div>
-      <div class="detail-item" style="grid-column:1/-1"><div class="k">貴重品確認</div>
+      <div class="detail-item" style="grid-column:1/-1"><div class="k">施工前確認</div>
         <div class="v">
-          ${SO_STATUS.indexOf(o.status) >= SO_STATUS.indexOf("貴重品確認済み") ? '<span class="badge b-purple">確認済み</span>' : '<span class="badge b-gray">未確認</span>'}
+          ${SO_STATUS.indexOf(o.status) >= SO_STATUS.indexOf("施工前確認済み") ? '<span class="badge b-purple">確認済み</span>' : '<span class="badge b-gray">未確認</span>'}
           ${o.valuablesSignatureData ? `
             <div style="margin-top:8px">
               <div style="font-size:11px;color:var(--muted);margin-bottom:4px">お客さま署名（確認日：${o.valuablesSignedAt}）</div>
@@ -973,8 +973,8 @@ function renderOpJobs() {
 }
 function opJobAction(o) {
   if (o.status === "施工店確認中") return `<button class="btn btn-success btn-sm" onclick="acceptJob('${o.id}')">対応できる</button> <button class="btn btn-ghost btn-sm" onclick="declineJob('${o.id}')">対応不可</button>`;
-  if (o.status === "施工日確定") return `<button class="btn btn-primary btn-sm" onclick="openValuablesModal('${o.id}')">貴重品確認へ進む</button>`;
-  if (o.status === "貴重品確認済み") return `<button class="btn btn-primary btn-sm" onclick="completeJob('${o.id}')">施工完了を報告</button>`;
+  if (o.status === "施工日確定") return `<button class="btn btn-primary btn-sm" onclick="openValuablesModal('${o.id}')">施工前確認へ進む</button>`;
+  if (o.status === "施工前確認済み") return `<button class="btn btn-primary btn-sm" onclick="completeJob('${o.id}')">施工完了を報告</button>`;
   return "—";
 }
 function acceptJob(soId) {
@@ -990,7 +990,7 @@ function declineJob(soId) {
   renderAll();
   alert("対応不可として本部に戻しました。本部が別の施工代理店を割り当てます。");
 }
-// 貴重品確認は施工代理店の自己申告ではなく、その場でお客さまにタブレット等で
+// 施工前確認は施工代理店の自己申告ではなく、その場でお客さまにタブレット等で
 // 署名してもらい、送信と同時に本部にも記録が残る形にする（施工代理店だけの判断で
 // ステータスを進められないようにするための証跡）。
 let sigCtx = null, sigDrawing = false, sigHasDrawn = false;
@@ -998,8 +998,8 @@ let sigCtx = null, sigDrawing = false, sigHasDrawn = false;
 function openValuablesModal(soId) {
   const o = serviceOrders.find(x => x.id === soId);
   openModal(`
-    <h2>貴重品確認 — ${o.id}</h2>
-    <div class="alert alert-warn">📢 ご確認をいただきましたら、ご署名をお願いします。（お客さま「${o.customer}」にこの画面をお見せください）</div>
+    <h2>施工前確認 — ${o.id}</h2>
+    <div class="alert alert-warn">📢 ご確認をいただきましたら、ご署名をお願いします。</div>
     <div class="card" style="background:#f8fafc;margin-bottom:14px">
       ・車内に貴重品（財布・スマートフォン・貴金属類など）が残っていないことを確認しました。<br>
       ・車体の傷について、施工前に確認しました。
@@ -1048,7 +1048,7 @@ function submitValuablesCheck(soId) {
   if (!$("valuables-check").checked) { alert("チェックボックスにチェックを入れてください"); return; }
   if (!sigHasDrawn) { alert("お客さまのご署名をご記入ください"); return; }
   const o = serviceOrders.find(x => x.id === soId);
-  o.status = "貴重品確認済み";
+  o.status = "施工前確認済み";
   o.valuablesSignatureData = $("sig-pad").toDataURL("image/png");
   o.valuablesSignedAt = TODAY; // モックのため申込日を代用。本番では送信時刻を記録
   closeModal(); renderAll();
