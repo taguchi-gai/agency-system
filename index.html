@@ -952,21 +952,45 @@ function renderOpJobs() {
   const el = $("page-op-jobs"); if (!el) return;
   const list = serviceOrders.filter(o => o.contractorId === session.entityId);
   const pending = list.filter(o => o.status === "施工店確認中");
+  const doneList = list.filter(o => o.status === "施工完了");
+  const totalAll = list.reduce((s, o) => s + (o.amount || 0), 0);
+  const totalDone = doneList.reduce((s, o) => s + (o.amount || 0), 0);
+  const byShop = {};
+  list.forEach(o => {
+    const shop = shopById(o.shopId);
+    if (!byShop[shop.id]) byShop[shop.id] = { shop, count: 0, amount: 0 };
+    byShop[shop.id].count++;
+    byShop[shop.id].amount += o.amount || 0;
+  });
+  const shopRows = Object.values(byShop).sort((a, b) => b.amount - a.amount);
+
   el.innerHTML = `
     <div class="page-title">施工案件</div>
     <div class="page-desc">本部から割り当てられた案件です。対応可否の回答と施工完了の報告を行います</div>
     ${pending.map(o => `<div class="alert alert-warn">⏳ <b>${o.id}</b>（${o.customerPref}${o.customerCity} / ${o.car} / 希望日 ${o.desire}）の対応可否を回答してください。</div>`).join("")}
+    <div class="cards-row">
+      <div class="card"><div class="stat-label">対応案件の合計金額</div><div class="stat-value">${yen(totalAll)}</div><div class="stat-sub">全${list.length}件（施工完了 ${doneList.length}件・${yen(totalDone)}）</div></div>
+      <div class="card" style="grid-column:span 2">
+        <div class="stat-label" style="margin-bottom:8px">取次店ごとの内訳（参考）</div>
+        <table style="font-size:12px"><thead><tr><th>取次店</th><th>件数</th><th>金額</th></tr></thead><tbody>
+          ${shopRows.map(r => `<tr><td>${r.shop.name}</td><td>${r.count}件</td><td>${yen(r.amount)}</td></tr>`).join("") || `<tr><td colspan="3" style="color:var(--muted)">対応案件はありません</td></tr>`}
+        </tbody></table>
+      </div>
+    </div>
+    <div class="alert alert-info" style="font-size:12px">※ 表示している金額はお客さまからお預かりした施工料金です。本部・取次店・施工代理店の間での配分（請求先や手数料率）は決まり次第反映します。</div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>案件番号</th><th>受付日</th><th>お客さま</th><th>施工場所</th><th>車種</th><th>希望日</th><th>確定日</th><th>状況</th><th>操作</th></tr></thead>
+        <thead><tr><th>案件番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>施工場所</th><th>車種 / 区分</th><th>金額</th><th>希望日</th><th>確定日</th><th>状況</th><th>操作</th></tr></thead>
         <tbody>
           ${list.map(o => `
             <tr>
-              <td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}<br><span style="font-size:11px;color:var(--muted)">${o.customerTel}</span></td>
+              <td><b>${o.id}</b></td><td>${o.date}</td><td>${shopById(o.shopId).name}</td><td>${o.customer}<br><span style="font-size:11px;color:var(--muted)">${o.customerTel}</span></td>
               <td>${o.customerPref}${o.customerCity}</td>
-              <td>${o.car}</td><td>${o.desire}</td><td>${o.scheduled || "—"}</td><td>${soBadge(o.status)}</td>
+              <td>${o.car}<br><span style="font-size:11px;color:var(--muted)">${o.carClass || "—"}${o.yani ? "＋やに" : ""}</span></td>
+              <td>${yen(o.amount)}</td>
+              <td>${o.desire}</td><td>${o.scheduled || "—"}</td><td>${soBadge(o.status)}</td>
               <td>${opJobAction(o)}</td>
-            </tr>`).join("") || `<tr><td colspan="9" style="color:var(--muted)">割り当てられた案件はありません</td></tr>`}
+            </tr>`).join("") || `<tr><td colspan="11" style="color:var(--muted)">割り当てられた案件はありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
