@@ -64,6 +64,7 @@
 
   /* ===== 部品 ===== */
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .card:has(table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .cards-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 14px; margin-bottom: 20px; }
   .stat-label { font-size: 12px; color: var(--muted); }
   .stat-value { font-size: 25px; font-weight: bold; margin-top: 6px; }
