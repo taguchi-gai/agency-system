@@ -210,17 +210,32 @@
 // 新規注文の注文日などは自動でこの値が入る仕組みで、本番では実際の当日の日付になる。
 const TODAY = "2026-06-11";
 
-// 本部・取次店・施工代理店への配分（手数料）率。請求先・料率とも本部でまだ確定していないため
-// 仮の数値を置いている。決まり次第この値だけ差し替えれば、受取額の表示に自動反映される。
+// 施工売上の配分ルール（本部確定）。
+// 売上から決済代行会社（カード会社等）の手数料を引いた金額をベースに、
+// 本部10% / 取次店10% / 施工代理店80% で配分する。
+// 決済代行会社が未定のため paymentFeeRate のみ仮置き。決まったらこの値を入れ替えれば全画面に反映される。
 let commissionSettings = {
-  confirmed: false,     // 本部で正式決定したら true にする（true になるまで「仮」表示を出す）
-  hqRate: 0.15,          // 本部の取り分（仮）
-  shopRate: 0.15,        // 取次店の取り分（仮）
-  contractorRate: 0.70,  // 施工代理店の取り分（仮）
+  hqRate: 0.10,          // 本部の取り分
+  shopRate: 0.10,        // 取次店の取り分
+  contractorRate: 0.80,  // 施工代理店の取り分
+  paymentFeeRate: 0.035, // 決済代行会社の手数料率（仮。決済代行会社が決まり次第この値を差し替える）
+  paymentFeeConfirmed: false, // 決済代行会社が決まったら true
 };
-function contractorPayout(amount) {
-  return amount == null ? null : Math.round(amount * commissionSettings.contractorRate);
+// 売上から決済手数料を引いた「配分のベースになる金額」
+function distributableAmount(amount) {
+  if (amount == null) return null;
+  return amount - Math.round(amount * commissionSettings.paymentFeeRate);
 }
+function paymentFeeOf(amount) {
+  return amount == null ? null : Math.round(amount * commissionSettings.paymentFeeRate);
+}
+function payoutOf(amount, rate) {
+  const base = distributableAmount(amount);
+  return base == null ? null : Math.round(base * rate);
+}
+const contractorPayout = amount => payoutOf(amount, commissionSettings.contractorRate);
+const shopPayout = amount => payoutOf(amount, commissionSettings.shopRate);
+const hqPayout = amount => payoutOf(amount, commissionSettings.hqRate);
 
 const PREFECTURES = [
   "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
@@ -266,12 +281,19 @@ let serviceOrders = [
   { id: "SO-0001", date: "2026-05-02", shopId: 4, customer: "遠藤 様", customerTel: "070-9090-1212", customerPref: "大阪府", customerCity: "大阪市北区", car: "BMW 3シリーズ", carClass: "普通", yani: false, amount: 18000, payment: "決済済み", desire: "2026-05-10", status: "施工完了", contractorId: 3, scheduled: "2026-05-10", note: "" },
 ];
 
-// 消耗品（除菌消臭剤）
+// 消耗品（除菌消臭剤）。price は施工代理店・取次店に卸す価格で、すべて税込。
+// published: false の商品は取次店・施工代理店の注文フォームに表示しない（準備が整ったら true にする）。
 let products = [
-  { id: 1, name: "車の消臭プロ 10L", price: 15000, stock: 240 },
-  { id: 2, name: "タバコの臭い取り", price: null, stock: 80 },
-  { id: 3, name: "200mlスプレーボトル（家電量販店向け・検討中）", price: null, stock: 0 },
+  { id: 1, name: "車の消臭プロ 10L", price: 16500, unit: "本", stock: 240, published: true },
+  { id: 2, name: "タバコの臭い取り 1L", price: 2200, unit: "本", stock: 80, published: true },
+  { id: 3, name: "280ml 空スプレー＋280mlパウチ セット", price: 1000, shopPrice: 2000, retailPrice: 2500, unit: "セット", stock: 0, published: false, note: "家電量販店向け。準備が整ったら公開する" },
 ];
+
+// 送料（税込）。注文金額が無料ラインに達していれば無料。
+const SHIPPING = { freeThreshold: 15000, fee: 1000 };
+function shippingFee(subtotal) { return subtotal >= SHIPPING.freeThreshold ? 0 : SHIPPING.fee; }
+// 施工代理店・取次店が注文できる商品（非公開のものは除く）
+function orderableProducts() { return products.filter(p => p.published); }
 
 // 消耗品注文（施工代理店 → 本部）
 let supplyOrders = [
@@ -300,9 +322,15 @@ const yen = n => n == null ? "金額確認中" : "¥" + n.toLocaleString();
 const shopById = id => shops.find(s => s.id === id);
 const opById = id => contractors.find(c => c.id === id);
 const prodById = id => products.find(p => p.id === id);
-const poAmount = o => {
+// 商品代の小計（税込）
+const poSubtotal = o => {
   const price = prodById(o.productId).price;
   return price == null ? null : price * o.qty;
+};
+// 送料を含めた請求額（税込）
+const poAmount = o => {
+  const sub = poSubtotal(o);
+  return sub == null ? null : sub + shippingFee(sub);
 };
 
 function soBadge(s) {
@@ -614,21 +642,25 @@ function renderHqPo() {
   const el = $("page-hq-po"); if (!el) return;
   el.innerHTML = `
     <div class="page-title">消耗品受発注管理</div>
-    <div class="page-desc">施工代理店からの除菌消臭剤などの注文と、本部在庫を管理します</div>
+    <div class="page-desc">施工代理店からの除菌消臭剤などの注文と、本部在庫を管理します（表示金額はすべて税込）</div>
+    <div class="alert alert-info" style="font-size:12px">🚚 送料：${yen(SHIPPING.freeThreshold)}以上は無料 / ${yen(SHIPPING.freeThreshold)}未満は ${yen(SHIPPING.fee)}</div>
     <div class="cards-row">
       ${products.map(p => `
-        <div class="card"><div class="stat-label">${p.name}</div>
-        <div class="stat-value" style="color:${p.stock < 70 ? "var(--danger)" : "inherit"}">${p.stock}<span style="font-size:14px"> 本</span></div>
-        <div class="stat-sub">${p.stock < 70 ? "⚠ 在庫僅少" : "本部在庫"} / 卸価格 ${yen(p.price)}</div></div>`).join("")}
+        <div class="card"><div class="stat-label">${p.name} ${p.published ? "" : '<span class="badge b-gray">非公開</span>'}</div>
+        <div class="stat-value" style="color:${p.stock < 70 ? "var(--danger)" : "inherit"}">${p.stock}<span style="font-size:14px"> ${p.unit}</span></div>
+        <div class="stat-sub">${p.stock < 70 ? "⚠ 在庫僅少" : "本部在庫"} / 卸価格 ${yen(p.price)}${p.shopPrice ? ` ・取次店 ${yen(p.shopPrice)} ・小売 ${yen(p.retailPrice)}` : ""}${p.published ? "" : "<br>※ 取次店・施工代理店の注文画面には未表示"}</div></div>`).join("")}
     </div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>注文番号</th><th>注文日</th><th>施工代理店</th><th>商品</th><th>数量</th><th>金額</th><th>入金</th><th>状況</th><th>操作</th></tr></thead>
+        <thead><tr><th>注文番号</th><th>注文日</th><th>施工代理店</th><th>商品</th><th>数量</th><th>商品代</th><th>送料</th><th>合計</th><th>入金</th><th>状況</th><th>操作</th></tr></thead>
         <tbody>
           ${supplyOrders.map(o => `
             <tr>
               <td><b>${o.id}</b></td><td>${o.date}</td><td>${opById(o.contractorId).name}</td>
-              <td>${prodById(o.productId).name}</td><td>${o.qty}</td><td>${yen(poAmount(o))}</td>
+              <td>${prodById(o.productId).name}</td><td>${o.qty}</td>
+              <td>${yen(poSubtotal(o))}</td>
+              <td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td>
+              <td><b>${yen(poAmount(o))}</b></td>
               <td>${paidBadge(o.paid)}</td><td>${poBadge(o.status)}</td>
               <td>${o.status === "受注" ? `<button class="btn btn-primary btn-sm" onclick="shipPo('${o.id}')">出荷済にする</button>` : "—"}</td>
             </tr>`).join("")}
@@ -1018,18 +1050,18 @@ function renderOpJobs() {
     ${pending.map(o => `<div class="alert alert-warn">⏳ <b>${o.id}</b>（${o.customerPref}${o.customerCity} / ${o.car} / 希望日 ${o.desire}）の対応可否を回答してください。</div>`).join("")}
     <div class="cards-row">
       <div class="card"><div class="stat-label">対応案件の合計金額</div><div class="stat-value">${yen(totalAll)}</div><div class="stat-sub">全${list.length}件（施工完了 ${doneList.length}件・${yen(totalDone)}）</div></div>
-      <div class="card"><div class="stat-label">受取見込み額${commissionSettings.confirmed ? "" : "（仮）"}</div><div class="stat-value" style="color:var(--primary-dark)">${yen(contractorPayout(totalAll))}</div><div class="stat-sub">料率 ${(commissionSettings.contractorRate * 100).toFixed(0)}% で試算${commissionSettings.confirmed ? "" : "・本部で確定次第この数値に切り替わります"}</div></div>
+      <div class="card"><div class="stat-label">受取見込み額</div><div class="stat-value" style="color:var(--primary-dark)">${yen(contractorPayout(totalAll))}</div><div class="stat-sub">決済手数料 ${yen(paymentFeeOf(totalAll))} を引いた額の ${(commissionSettings.contractorRate * 100).toFixed(0)}%${commissionSettings.paymentFeeConfirmed ? "" : "<br>※ 手数料率は決済代行会社が決まるまで仮の値です"}</div></div>
       <div class="card" style="grid-column:span 2">
         <div class="stat-label" style="margin-bottom:8px">取次店ごとの内訳（参考）</div>
-        <table style="font-size:12px"><thead><tr><th>取次店</th><th>件数</th><th>金額</th><th>受取見込み${commissionSettings.confirmed ? "" : "（仮）"}</th></tr></thead><tbody>
+        <table style="font-size:12px"><thead><tr><th>取次店</th><th>件数</th><th>金額</th><th>受取見込み</th></tr></thead><tbody>
           ${shopRows.map(r => `<tr><td>${r.shop.name}</td><td>${r.count}件</td><td>${yen(r.amount)}</td><td>${yen(contractorPayout(r.amount))}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対応案件はありません</td></tr>`}
         </tbody></table>
       </div>
     </div>
-    <div class="alert alert-info" style="font-size:12px">※ 「金額」はお客さまからお預かりした施工料金、「受取見込み額」はそのうち施工代理店の取り分を試算したものです。請求先や料率（現在は施工代理店${(commissionSettings.contractorRate * 100).toFixed(0)}%／取次店${(commissionSettings.shopRate * 100).toFixed(0)}%／本部${(commissionSettings.hqRate * 100).toFixed(0)}%の仮の値）は本部で決まり次第反映します。</div>
+    <div class="alert alert-info" style="font-size:12px">※ 「金額」はお客さまからお預かりした施工料金（税込）です。「受取見込み額」は、そこから決済代行会社の手数料（現在 ${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "・仮"}）を引いた金額の ${(commissionSettings.contractorRate * 100).toFixed(0)}%（本部${(commissionSettings.hqRate * 100).toFixed(0)}%／取次店${(commissionSettings.shopRate * 100).toFixed(0)}%／施工代理店${(commissionSettings.contractorRate * 100).toFixed(0)}%）です。お支払いは月末締めの翌月払いです。</div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>案件番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>施工場所</th><th>車種 / 区分</th><th>金額</th><th>受取見込み${commissionSettings.confirmed ? "" : "（仮）"}</th><th>希望日</th><th>確定日</th><th>状況</th><th>操作</th></tr></thead>
+        <thead><tr><th>案件番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>施工場所</th><th>車種 / 区分</th><th>金額</th><th>受取見込み</th><th>希望日</th><th>確定日</th><th>状況</th><th>操作</th></tr></thead>
         <tbody>
           ${list.map(o => `
             <tr>
@@ -1138,13 +1170,14 @@ function renderOpPo() {
   const list = supplyOrders.filter(o => o.contractorId === session.entityId);
   el.innerHTML = `
     <div class="page-title">消耗品注文</div>
-    <div class="page-desc">除菌消臭剤などの消耗品を本部に注文します</div>
+    <div class="page-desc">除菌消臭剤などの消耗品を本部に注文します（表示金額はすべて税込）</div>
+    <div class="alert alert-info" style="font-size:12px">🚚 ${yen(SHIPPING.freeThreshold)}以上のご注文は送料無料。${yen(SHIPPING.freeThreshold)}未満は送料 ${yen(SHIPPING.fee)} がかかります。</div>
     <div class="toolbar"><div></div><button class="btn btn-primary" onclick="openPoModal()">＋ 消耗品を注文</button></div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>注文番号</th><th>注文日</th><th>商品</th><th>数量</th><th>金額</th><th>入金</th><th>状況</th></tr></thead>
+        <thead><tr><th>注文番号</th><th>注文日</th><th>商品</th><th>数量</th><th>商品代</th><th>送料</th><th>合計</th><th>入金</th><th>状況</th></tr></thead>
         <tbody>
-          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${prodById(o.productId).name}</td><td>${o.qty}</td><td>${yen(poAmount(o))}</td><td>${paidBadge(o.paid)}</td><td>${opPoBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="7" style="color:var(--muted)">注文履歴はありません</td></tr>`}
+          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${prodById(o.productId).name}</td><td>${o.qty}</td><td>${yen(poSubtotal(o))}</td><td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td><td><b>${yen(poAmount(o))}</b></td><td>${paidBadge(o.paid)}</td><td>${opPoBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--muted)">注文履歴はありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
@@ -1153,15 +1186,27 @@ function openPoModal() {
   openModal(`
     <h2>消耗品を注文</h2>
     <div class="form-grid">
-      <div class="form-group full"><label>商品</label>
-        <select id="po-product">${products.map(p => `<option value="${p.id}">${p.name}（${yen(p.price)}）</option>`).join("")}</select>
+      <div class="form-group full"><label>商品（税込）</label>
+        <select id="po-product" onchange="updatePoSummary()">${orderableProducts().map(p => `<option value="${p.id}">${p.name}（${yen(p.price)} / ${p.unit}）</option>`).join("")}</select>
       </div>
-      <div class="form-group"><label>数量</label><input type="number" id="po-qty" value="10" min="1"></div>
+      <div class="form-group"><label>数量</label><input type="number" id="po-qty" value="10" min="1" oninput="updatePoSummary()"></div>
     </div>
+    <div id="po-summary" class="price-box"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
       <button class="btn btn-primary" onclick="savePo()">注文する</button>
     </div>`);
+  updatePoSummary();
+}
+function updatePoSummary() {
+  const p = prodById(parseInt($("po-product").value));
+  const qty = parseInt($("po-qty").value) || 0;
+  const sub = p.price * qty;
+  const ship = shippingFee(sub);
+  $("po-summary").innerHTML = `
+    <div class="price-row"><span>商品代（${p.name} × ${qty}）</span><span>${yen(sub)}</span></div>
+    <div class="price-row"><span>送料</span><span>${ship === 0 ? `無料（${yen(SHIPPING.freeThreshold)}以上）` : yen(ship)}</span></div>
+    <div class="price-row total"><span>お支払い合計（税込）</span><span>${yen(sub + ship)}</span></div>`;
 }
 function savePo() {
   const num = supplyOrders.length + 1;
