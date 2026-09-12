@@ -243,7 +243,6 @@ function splitTotal(orders) {
 }
 const contractorPayout = amount => { const s = splitOf(amount); return s && s.contractor; };
 const shopPayout = amount => { const s = splitOf(amount); return s && s.shop; };
-const paymentFeeOf = amount => { const s = splitOf(amount); return s && s.fee; };
 
 const PREFECTURES = [
   "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
@@ -282,11 +281,11 @@ let serviceOrders = [
   { id: "SO-0008", date: "2026-06-10", shopId: 1, customer: "斎藤 様", customerTel: "090-1111-2222", customerPref: "千葉県", customerCity: "船橋市", car: "トヨタ アルファード", carClass: "ワンボックス", yani: false, amount: 22000, payment: "決済済み", desire: "2026-06-18", status: "新規受付", contractorId: null, scheduled: null, note: "ペット臭が気になるとのこと" },
   { id: "SO-0007", date: "2026-06-09", shopId: 4, customer: "岡本 様", customerTel: "080-3333-4444", customerPref: "京都府", customerCity: "京都市伏見区", car: "ホンダ N-BOX", carClass: "軽", yani: true, amount: 22000, payment: "決済済み", desire: "2026-06-15", status: "施工店確認中", contractorId: 3, scheduled: null, note: "タバコ臭" },
   { id: "SO-0006", date: "2026-06-07", shopId: 2, customer: "三浦 様", customerTel: "070-5555-6666", customerPref: "埼玉県", customerCity: "大宮区", car: "日産 セレナ", carClass: "ワンボックス", yani: false, amount: 22000, payment: "決済済み", desire: "2026-06-14", status: "施工日確定", contractorId: 1, scheduled: "2026-06-14", note: "" },
-  { id: "SO-0005", date: "2026-06-03", shopId: 1, customer: "原田 様", customerTel: "090-7777-8888", customerPref: "茨城県", customerCity: "つくば市", car: "スバル フォレスター", carClass: "普通", yani: false, amount: 19800, payment: "決済済み", desire: "2026-06-08", status: "施工完了", contractorId: 2, scheduled: "2026-06-08", note: "" },
-  { id: "SO-0004", date: "2026-05-28", shopId: 5, customer: "村上 様", customerTel: "080-9999-0000", customerPref: "兵庫県", customerCity: "神戸市", car: "マツダ CX-5", carClass: "普通", yani: true, amount: 25300, payment: "決済済み", desire: "2026-06-02", status: "施工完了", contractorId: 3, scheduled: "2026-06-02", note: "" },
-  { id: "SO-0003", date: "2026-05-20", shopId: 3, customer: "石川 様", customerTel: "090-1212-3434", customerPref: "神奈川県", customerCity: "横浜市", car: "トヨタ プリウス", carClass: "普通", yani: false, amount: 19800, payment: "決済済み", desire: "2026-05-26", status: "施工完了", contractorId: 1, scheduled: "2026-05-26", note: "" },
-  { id: "SO-0002", date: "2026-05-12", shopId: 2, customer: "近藤 様", customerTel: "080-5656-7878", customerPref: "埼玉県", customerCity: "さいたま市浦和区", car: "スズキ スペーシア", carClass: "軽", yani: false, amount: 16500, payment: "決済済み", desire: "2026-05-18", status: "施工完了", contractorId: 1, scheduled: "2026-05-18", note: "" },
-  { id: "SO-0001", date: "2026-05-02", shopId: 4, customer: "遠藤 様", customerTel: "070-9090-1212", customerPref: "大阪府", customerCity: "大阪市北区", car: "BMW 3シリーズ", carClass: "普通", yani: false, amount: 19800, payment: "決済済み", desire: "2026-05-10", status: "施工完了", contractorId: 3, scheduled: "2026-05-10", note: "" },
+  { id: "SO-0005", date: "2026-06-03", shopId: 1, customer: "原田 様", customerTel: "090-7777-8888", customerPref: "茨城県", customerCity: "つくば市", car: "スバル フォレスター", carClass: "普通", yani: false, amount: 19800, payment: "決済済み", desire: "2026-06-08", status: "施工完了", completedAt: "2026-06-08", contractorId: 2, scheduled: "2026-06-08", note: "" },
+  { id: "SO-0004", date: "2026-05-28", shopId: 5, customer: "村上 様", customerTel: "080-9999-0000", customerPref: "兵庫県", customerCity: "神戸市", car: "マツダ CX-5", carClass: "普通", yani: true, amount: 25300, payment: "決済済み", desire: "2026-06-02", status: "施工完了", completedAt: "2026-06-02", contractorId: 3, scheduled: "2026-06-02", note: "" },
+  { id: "SO-0003", date: "2026-05-20", shopId: 3, customer: "石川 様", customerTel: "090-1212-3434", customerPref: "神奈川県", customerCity: "横浜市", car: "トヨタ プリウス", carClass: "普通", yani: false, amount: 19800, payment: "決済済み", desire: "2026-05-26", status: "施工完了", completedAt: "2026-05-26", contractorId: 1, scheduled: "2026-05-26", note: "" },
+  { id: "SO-0002", date: "2026-05-12", shopId: 2, customer: "近藤 様", customerTel: "080-5656-7878", customerPref: "埼玉県", customerCity: "さいたま市浦和区", car: "スズキ スペーシア", carClass: "軽", yani: false, amount: 16500, payment: "決済済み", desire: "2026-05-18", status: "施工完了", completedAt: "2026-05-18", contractorId: 1, scheduled: "2026-05-18", note: "" },
+  { id: "SO-0001", date: "2026-05-02", shopId: 4, customer: "遠藤 様", customerTel: "070-9090-1212", customerPref: "大阪府", customerCity: "大阪市北区", car: "BMW 3シリーズ", carClass: "普通", yani: false, amount: 19800, payment: "決済済み", desire: "2026-05-10", status: "施工完了", completedAt: "2026-05-10", contractorId: 3, scheduled: "2026-05-10", note: "" },
 ];
 
 // 消耗品（除菌消臭剤）。price は施工代理店・取次店に卸す価格で、すべて税込。
@@ -499,7 +498,7 @@ function renderHqDash() {
   const waitSo = serviceOrders.filter(o => o.status === "施工店確認中").length;
   const doneSo = serviceOrders.filter(o => o.status === "施工完了").length;
   const poUnshipped = supplyOrders.filter(o => o.status === "受注").length;
-  const poSales = supplyOrders.reduce((s, o) => s + poAmount(o), 0);
+  const poSales = supplyOrders.reduce((s, o) => s + (poAmount(o) || 0), 0);
   const activeShops = shops.filter(s => s.status === "稼働中").length;
 
   const alerts = [];
@@ -517,7 +516,7 @@ function renderHqDash() {
       <div class="card"><div class="stat-label">未対応の施工注文</div><div class="stat-value" style="color:${newSo ? "var(--danger)" : "inherit"}">${newSo}<span style="font-size:14px"> 件</span></div><div class="stat-sub">確認中 ${waitSo} 件 / 完了 ${doneSo} 件</div></div>
       <div class="card"><div class="stat-label">稼働取次店</div><div class="stat-value">${activeShops}<span style="font-size:14px"> 店</span></div><div class="stat-sub">目標 3,000 店（施工代理店10社 × 300店）</div></div>
       <div class="card"><div class="stat-label">消耗品 出荷待ち</div><div class="stat-value" style="color:${poUnshipped ? "var(--warning)" : "inherit"}">${poUnshipped}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工代理店からの注文</div></div>
-      <div class="card"><div class="stat-label">消耗品 累計売上</div><div class="stat-value">${yen(poSales)}</div><div class="stat-sub">2026年5月〜</div></div>
+      <div class="card"><div class="stat-label">消耗品 累計売上</div><div class="stat-value">${yen(poSales)}</div><div class="stat-sub">2026年5月〜（送料込み）</div></div>
     </div>
     <div class="two-col">
       <div class="card">
@@ -753,7 +752,11 @@ function mockQrSvg(seed) {
 // 支払いは月初から月末までで締める。'YYYY-MM' を扱う。
 function monthOf(dateStr) { return (dateStr || "").slice(0, 7); }
 function availableMonths() {
-  const set = new Set([...serviceOrders.map(o => monthOf(o.date)), ...supplyOrders.map(o => monthOf(o.date))].filter(Boolean));
+  const set = new Set([
+    ...serviceOrders.map(o => monthOf(o.date)),
+    ...completedOnly(serviceOrders).map(completionMonthOf),
+    ...supplyOrders.map(o => monthOf(o.date)),
+  ].filter(Boolean));
   return [...set].sort().reverse();
 }
 let salesMonth = null;   // 売上管理で選択中の月（null = 全期間）
@@ -764,14 +767,21 @@ function ordersInMonth(list, month) { return month ? list.filter(o => monthOf(o.
 // 「施工完了」となった案件だけを対象にする（新規受付〜施工日確定の段階では未確定の売上として扱う）
 function completedOnly(list) { return list.filter(o => o.status === "施工完了"); }
 function notCompletedOnly(list) { return list.filter(o => o.status !== "施工完了"); }
+// 売上の確定と支払の締めは「施工完了日」の月で行う（受付日ではない）。
+// 例：6月28日受付・7月3日完了の案件は、7月分の確定売上・支払になる。
+function completionMonthOf(o) { return monthOf(o.completedAt || o.scheduled || o.date); }
+function completedInMonth(month) {
+  const done = completedOnly(serviceOrders);
+  return month ? done.filter(o => completionMonthOf(o) === month) : done;
+}
 
 function renderHqSales() {
   const el = $("page-hq-sales"); if (!el) return;
   const months = availableMonths();
   if (salesMonth === null && months.length) salesMonth = months[0];
   const so = ordersInMonth(serviceOrders, salesMonth);
-  const soDone = completedOnly(so);
-  const soPending = notCompletedOnly(so);
+  const soDone = completedInMonth(salesMonth);   // 確定売上は「施工完了日」の月で計上
+  const soPending = notCompletedOnly(so);        // 未完了は「受付日」の月で参考表示
   const po = ordersInMonth(supplyOrders, salesMonth);
   const doneTotal = soDone.reduce((s, o) => s + (o.amount || 0), 0);
   const pendingTotal = soPending.reduce((s, o) => s + (o.amount || 0), 0);
@@ -809,7 +819,7 @@ function renderHqSales() {
       </div>
       <div></div>
     </div>
-    <div class="alert alert-info" style="font-size:12px">💡 キャンセル・返金の可能性があるため、施工売上は<b>「施工完了」となった案件のみ確定売上</b>として集計しています。施工中・確認中の案件は「未完了（参考）」として別に表示し、支払の対象にもしていません。</div>
+    <div class="alert alert-info" style="font-size:12px">💡 キャンセル・返金の可能性があるため、施工売上は<b>「施工完了」となった案件のみ確定売上</b>として、<b>施工完了日の月</b>で計上しています。施工中・確認中の案件は受付日の月に「未完了（参考）」として別に表示し、支払の対象にもしていません。</div>
     <div class="cards-row">
       <div class="card"><div class="stat-label">施工売上（施工完了・確定）</div><div class="stat-value">${yen(doneTotal)}</div><div class="stat-sub">${soDone.length} 件</div></div>
       <div class="card"><div class="stat-label">施工中・未完了（参考）</div><div class="stat-value" style="color:var(--warning)">${yen(pendingTotal)}</div><div class="stat-sub">${soPending.length} 件・完了後に確定売上へ移る</div></div>
@@ -838,7 +848,7 @@ function renderHqSales() {
 // キャンセル・返金の可能性があるため、支払の対象は「施工完了」の案件のみ。
 // 配分は案件ごとに計算してから合算する（決済手数料が1件ごとに発生するため）
 function payoutRows(month) {
-  const so = completedOnly(ordersInMonth(serviceOrders, month));
+  const so = completedInMonth(month);
   const rows = [];
   contractors.forEach(c => {
     const jobs = so.filter(o => o.contractorId === c.id);
@@ -859,7 +869,7 @@ function renderHqPayment() {
   if (paymentMonth === null && months.length) paymentMonth = months[0];
   const rows = payoutRows(paymentMonth);
   const total = rows.reduce((s, r) => s + r.payout, 0);
-  const t = splitTotal(completedOnly(ordersInMonth(serviceOrders, paymentMonth)));
+  const t = splitTotal(completedInMonth(paymentMonth));
   const soTotal = t.amount;
   const pending = notCompletedOnly(ordersInMonth(serviceOrders, paymentMonth));
   const pendingTotal = pending.reduce((s, o) => s + (o.amount || 0), 0);
@@ -867,8 +877,8 @@ function renderHqPayment() {
   el.innerHTML = `
     <div class="page-title">支払管理</div>
     <div class="page-desc">月初から月末までで締めた1か月分の配分額です。振込用のCSVをダウンロードして銀行にアップロードします</div>
-    <div class="alert alert-info" style="font-size:12px">💡 キャンセル・返金の可能性があるため、支払の対象は<b>「施工完了」となった案件のみ</b>です。施工中・確認中の案件は今回の支払には含まれず、完了した月の支払に自動で反映されます。</div>
-    ${pending.length ? `<div class="alert alert-warn" style="font-size:12px">⏳ この月には施工完了前の案件が ${pending.length} 件（${yen(pendingTotal)}）あります。これらは完了するまで支払対象になりません。</div>` : ""}
+    <div class="alert alert-info" style="font-size:12px">💡 キャンセル・返金の可能性があるため、支払の対象は<b>「施工完了」となった案件のみ</b>です。締めは<b>受付日ではなく施工完了日の月</b>で行います（例：6/28受付・7/3完了の案件は7月分）。</div>
+    ${pending.length ? `<div class="alert alert-warn" style="font-size:12px">⏳ この月に受け付けた案件のうち施工完了前のものが ${pending.length} 件（${yen(pendingTotal)}）あります。これらは完了した月の支払に回ります。</div>` : ""}
     <div class="toolbar">
       <div>
         <label style="font-size:12px;color:var(--muted);font-weight:bold;margin-right:6px">締め月</label>
@@ -950,7 +960,7 @@ function renderHqOp() {
               <td><span class="badge clickable ${c.demoStatus === "済" ? "b-green" : "b-orange"}" onclick="toggleDemoStatus(${c.id})">${c.demoStatus}</span></td>
               <td><b>${shops.filter(s => s.contractorId === c.id).length}</b> / ${c.target} 店</td>
               <td>${serviceOrders.filter(o => o.contractorId === c.id && o.status === "施工完了").length} 件</td>
-              <td>${yen(supplyOrders.filter(o => o.contractorId === c.id).reduce((s, o) => s + poAmount(o), 0))}</td>
+              <td>${yen(supplyOrders.filter(o => o.contractorId === c.id).reduce((s, o) => s + (poAmount(o) || 0), 0))}</td>
               <td>${c.contractDate}</td>
             </tr>`).join("")}
         </tbody>
@@ -1216,14 +1226,24 @@ function confirmPayment() {
 function renderShopOrders() {
   const el = $("page-shop-orders"); if (!el) return;
   const list = serviceOrders.filter(o => o.shopId === session.entityId);
+  const doneList = completedOnly(list);
+  const notDoneList = notCompletedOnly(list);
+  const tDone = splitTotal(doneList);
+  const notDoneTotal = notDoneList.reduce((s, o) => s + (o.amount || 0), 0);
   el.innerHTML = `
     <div class="page-title">取次履歴</div>
     <div class="page-desc">自店経由の申し込みと進捗を確認できます（他店の情報は見えません）</div>
+    <div class="alert alert-info" style="font-size:12px">💡 キャンセル・返金の可能性があるため、受取見込み額は<b>「施工完了」となった案件のみ</b>で計算しています。施工中・確認中の案件は完了後に反映されます。</div>
+    <div class="cards-row">
+      <div class="card"><div class="stat-label">施工完了分の取次金額</div><div class="stat-value">${yen(tDone.amount)}</div><div class="stat-sub">${doneList.length}件（施工中・未完了 ${notDoneList.length}件・${yen(notDoneTotal)}は含まず）</div></div>
+      <div class="card"><div class="stat-label">受取見込み額</div><div class="stat-value" style="color:var(--primary-dark)">${yen(tDone.shop)}</div><div class="stat-sub">決済手数料 ${yen(tDone.fee)} を引いた額の ${(commissionSettings.shopRate * 100).toFixed(0)}%${commissionSettings.paymentFeeConfirmed ? "" : "<br>※ 手数料率は決済代行会社が決まるまで仮の値です"}</div></div>
+    </div>
+    <div class="alert alert-info" style="font-size:12px">※ 「金額」はお客さまからお預かりした施工料金（税込）です。「受取見込み」は、そこから決済代行会社の手数料（現在 ${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "・仮"}）を引いた金額の ${(commissionSettings.shopRate * 100).toFixed(0)}%（本部${(commissionSettings.hqRate * 100).toFixed(0)}%／取次店${(commissionSettings.shopRate * 100).toFixed(0)}%／施工代理店${(commissionSettings.contractorRate * 100).toFixed(0)}%）です。お支払いは施工完了の月を月末締めの翌月払いです。</div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>受付番号</th><th>受付日</th><th>お客さま</th><th>施工場所</th><th>車種</th><th>区分</th><th>金額</th><th>決済</th><th>希望日</th><th>状況</th></tr></thead>
+        <thead><tr><th>受付番号</th><th>受付日</th><th>お客さま</th><th>施工場所</th><th>車種</th><th>区分</th><th>金額</th><th>受取見込み</th><th>決済</th><th>希望日</th><th>状況</th></tr></thead>
         <tbody>
-          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.customerPref}${o.customerCity}</td><td>${o.car}</td><td>${o.carClass || "—"}${o.yani ? '<br><span style="font-size:11px;color:var(--muted)">＋やにとり</span>' : ""}</td><td>${yen(o.amount)}</td><td>${paymentBadge(o.payment)}</td><td>${o.desire}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="10" style="color:var(--muted)">取次はまだありません</td></tr>`}
+          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.customerPref}${o.customerCity}</td><td>${o.car}</td><td>${o.carClass || "—"}${o.yani ? '<br><span style="font-size:11px;color:var(--muted)">＋やにとり</span>' : ""}</td><td>${yen(o.amount)}</td><td>${o.status === "施工完了" ? `<b>${yen(shopPayout(o.amount))}</b>` : `<span style="color:var(--muted)">${yen(shopPayout(o.amount))}<br><span style="font-size:10px">（完了後に確定）</span></span>`}</td><td>${paymentBadge(o.payment)}</td><td>${o.desire}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="11" style="color:var(--muted)">取次はまだありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
@@ -1276,7 +1296,7 @@ function renderOpJobs() {
               <td>${o.customerPref}${o.customerCity}</td>
               <td>${o.car}<br><span style="font-size:11px;color:var(--muted)">${o.carClass || "—"}${o.yani ? "＋やに" : ""}</span></td>
               <td>${yen(o.amount)}</td>
-              <td>${yen(contractorPayout(o.amount))}</td>
+              <td>${o.status === "施工完了" ? `<b>${yen(contractorPayout(o.amount))}</b>` : `<span style="color:var(--muted)">${yen(contractorPayout(o.amount))}<br><span style="font-size:10px">（完了後に確定）</span></span>`}</td>
               <td>${o.desire}</td><td>${o.scheduled || "—"}</td><td>${soBadge(o.status)}</td>
               <td>${opJobAction(o)}</td>
             </tr>`).join("") || `<tr><td colspan="12" style="color:var(--muted)">割り当てられた案件はありません</td></tr>`}
@@ -1369,6 +1389,7 @@ function submitValuablesCheck(soId) {
 function completeJob(soId) {
   const o = serviceOrders.find(x => x.id === soId);
   o.status = "施工完了";
+  o.completedAt = TODAY; // 売上の確定・支払の締めはこの日付の月で行う（本番では実際の完了報告日時）
   renderAll();
 }
 
