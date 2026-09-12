@@ -137,6 +137,30 @@
   .two-col { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: start; }
   @media (max-width: 1000px) { .two-col { grid-template-columns: 1fr; } }
 
+  /* ===== 請求書（プレビュー・印刷） ===== */
+  .invoice-doc { background: #fff; color: #222; padding: 28px 32px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; line-height: 1.6; }
+  .invoice-doc h1 { font-size: 22px; letter-spacing: .3em; text-align: center; margin: 0 0 18px; }
+  .invoice-doc .inv-head { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 16px; }
+  .invoice-doc .inv-to { font-size: 16px; font-weight: bold; border-bottom: 1px solid #222; padding-bottom: 4px; min-width: 240px; }
+  .invoice-doc .inv-meta { font-size: 12px; text-align: right; }
+  .invoice-doc .inv-total { font-size: 18px; font-weight: bold; margin: 12px 0 16px; padding: 10px 14px; border: 2px solid #222; display: inline-block; }
+  .invoice-doc table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  .invoice-doc th, .invoice-doc td { border: 1px solid #999; padding: 6px 10px; font-size: 12.5px; color: #222; }
+  .invoice-doc th { background: #f0f0f0; text-align: center; }
+  .invoice-doc td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .invoice-doc .inv-issuer { font-size: 12px; margin-top: 16px; }
+  .invoice-doc .inv-note { font-size: 12px; white-space: pre-wrap; margin-top: 8px; }
+  .modal:has(.inv-lines), .modal:has(.invoice-doc) { max-width: 860px; }
+  .inv-lines input, .inv-lines select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+  .inv-lines input[type=number] { width: 84px; text-align: right; }
+  @media print {
+    body * { visibility: hidden; }
+    .invoice-doc, .invoice-doc * { visibility: visible; }
+    .invoice-doc { position: absolute; left: 0; top: 0; width: 100%; border: none; border-radius: 0; }
+    .modal-bg { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; }
+    .modal { max-width: none; box-shadow: none; padding: 0; }
+  }
+
   /* ===== スマホ・タブレット（狭い画面） ===== */
   @media (max-width: 820px) {
     /* サイドバーは通常隠しておき、メニューボタンで引き出す */
@@ -439,6 +463,7 @@ const NAVS = {
     { id: "hq-po", icon: "🧴", label: "消耗品受発注" },
     { id: "hq-sales", icon: "💹", label: "売上管理" },
     { id: "hq-payment", icon: "🏦", label: "支払管理" },
+    { id: "hq-invoice", icon: "🧾", label: "請求書管理" },
     { id: "hq-op", icon: "🧰", label: "施工代理店管理" },
     { id: "hq-shop", icon: "🚙", label: "取次店管理" },
     { id: "hq-contract", icon: "📄", label: "契約書管理" },
@@ -484,7 +509,7 @@ function buildUI() {
 }
 
 function renderAll() {
-  if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqSales(); renderHqPayment(); renderHqOp(); renderHqShop(); renderHqContract(); }
+  if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqSales(); renderHqPayment(); renderHqInvoice(); renderHqOp(); renderHqShop(); renderHqContract(); }
   if (session.role === "shop") { renderShopForm(); renderShopOrders(); }
   if (session.role === "op") { renderOpDash(); renderOpJobs(); renderOpShop(); renderOpPo(); renderOpContract(); }
 }
@@ -660,6 +685,15 @@ function renderHqPo() {
     <div class="page-title">消耗品受発注管理</div>
     <div class="page-desc">施工代理店からの除菌消臭剤などの注文と、本部在庫を管理します（表示金額はすべて税込）</div>
     <div class="alert alert-info" style="font-size:12px">🚚 送料：${yen(SHIPPING.freeThreshold)}以上は無料 / ${yen(SHIPPING.freeThreshold)}未満は ${yen(SHIPPING.fee)}</div>
+    ${(() => {
+      const shipped = supplyOrders.filter(o => o.status === "出荷済"), unshipped = supplyOrders.filter(o => o.status !== "出荷済");
+      const sum = l => l.reduce((s, o) => s + (poAmount(o) || 0), 0);
+      return `<div class="cards-row">
+        <div class="card"><div class="stat-label">消耗品売上（未出荷分を含む）</div><div class="stat-value">${yen(sum(supplyOrders))}</div><div class="stat-sub">${supplyOrders.length} 件・送料込み</div></div>
+        <div class="card"><div class="stat-label">出荷済</div><div class="stat-value">${yen(sum(shipped))}</div><div class="stat-sub">${shipped.length} 件</div></div>
+        <div class="card"><div class="stat-label">未出荷</div><div class="stat-value" style="color:${unshipped.length ? "var(--warning)" : "inherit"}">${yen(sum(unshipped))}</div><div class="stat-sub">${unshipped.length} 件・出荷待ち</div></div>
+      </div>`; })()}
+    <div class="section-title">本部在庫</div>
     <div class="cards-row">
       ${products.map(p => `
         <div class="card"><div class="stat-label">${p.name} ${p.published ? "" : '<span class="badge b-gray">非公開</span>'}</div>
@@ -668,7 +702,7 @@ function renderHqPo() {
     </div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>注文番号</th><th>注文日</th><th>施工代理店</th><th>商品</th><th>数量</th><th>商品代</th><th>送料</th><th>合計</th><th>入金</th><th>状況</th><th>操作</th></tr></thead>
+        <thead><tr><th>注文番号</th><th>注文日</th><th>施工代理店</th><th>商品</th><th>数量</th><th>商品代</th><th>送料</th><th>合計</th><th>入金</th><th>状況</th><th>請求書</th><th>操作</th></tr></thead>
         <tbody>
           ${supplyOrders.map(o => `
             <tr>
@@ -678,6 +712,7 @@ function renderHqPo() {
               <td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td>
               <td><b>${yen(poAmount(o))}</b></td>
               <td>${paidBadge(o.paid)}</td><td>${poBadge(o.status)}</td>
+              <td>${o.invoiceId ? `<span class="link" onclick="openInvoicePreview('${o.invoiceId}')">🧾 ${o.invoiceId}</span>` : `<button class="btn btn-ghost btn-sm" onclick="createInvoiceFromOrder('${o.id}')">請求書を作成</button>`}</td>
               <td>${o.status === "受注" ? `<button class="btn btn-primary btn-sm" onclick="shipPo('${o.id}')">出荷済にする</button>` : "—"}</td>
             </tr>`).join("")}
         </tbody>
@@ -786,6 +821,11 @@ function renderHqSales() {
   const doneTotal = soDone.reduce((s, o) => s + (o.amount || 0), 0);
   const pendingTotal = soPending.reduce((s, o) => s + (o.amount || 0), 0);
   const poTotal = po.reduce((s, o) => s + (poAmount(o) || 0), 0);
+  // 消耗品は未出荷分も売上に含める（本部方針）。ただし未出荷がいくらあるかは分けて見せる
+  const poShipped = po.filter(o => o.status === "出荷済");
+  const poUnshipped = po.filter(o => o.status !== "出荷済");
+  const poShippedTotal = poShipped.reduce((s, o) => s + (poAmount(o) || 0), 0);
+  const poUnshippedTotal = poUnshipped.reduce((s, o) => s + (poAmount(o) || 0), 0);
 
   // 施工代理店ごと：施工完了分の売上（確定）と、未完了分（参考）、消耗品の購入額
   const opRows = contractors.map(c => {
@@ -823,7 +863,7 @@ function renderHqSales() {
     <div class="cards-row">
       <div class="card"><div class="stat-label">施工売上（施工完了・確定）</div><div class="stat-value">${yen(doneTotal)}</div><div class="stat-sub">${soDone.length} 件</div></div>
       <div class="card"><div class="stat-label">施工中・未完了（参考）</div><div class="stat-value" style="color:var(--warning)">${yen(pendingTotal)}</div><div class="stat-sub">${soPending.length} 件・完了後に確定売上へ移る</div></div>
-      <div class="card"><div class="stat-label">消耗品売上</div><div class="stat-value">${yen(poTotal)}</div><div class="stat-sub">${po.length} 件（送料込み）</div></div>
+      <div class="card"><div class="stat-label">消耗品売上（未出荷分を含む）</div><div class="stat-value">${yen(poTotal)}</div><div class="stat-sub">${po.length} 件（送料込み）<br>出荷済 ${poShipped.length}件・${yen(poShippedTotal)} ／ <span style="color:var(--warning)">未出荷 ${poUnshipped.length}件・${yen(poUnshippedTotal)}</span></div></div>
       <div class="card"><div class="stat-label">確定売上の合計</div><div class="stat-value" style="color:var(--primary-dark)">${yen(doneTotal + poTotal)}</div><div class="stat-sub">施工完了分＋消耗品</div></div>
     </div>
     <div class="card" style="padding:0;margin-bottom:18px">
@@ -942,6 +982,243 @@ function downloadTransferCsv() {
   a.download = `振込データ_${paymentMonth}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+// =====================================================
+// 本部：請求書管理
+// =====================================================
+// 発行元（本部）の情報。正式な社名・住所・振込先・登録番号を受領したらここを差し替える。
+const ISSUER = {
+  name: "（本部 会社名）", address: "（本部 住所）", tel: "（本部 電話番号）",
+  bank: "（振込先：銀行名 支店名 口座種別 口座番号 口座名義）",
+  regNo: "（適格請求書発行事業者 登録番号 T0000000000000）",
+};
+// 請求書の管理番号ルール。本部からルールを受領したらこの関数だけ差し替える。
+// 仮ルール：INV-YYYYMM-連番3桁（発行月ごとに採番）
+function nextInvoiceNumber(dateStr) {
+  const ym = (dateStr || TODAY).slice(0, 7).replace("-", "");
+  const n = invoices.filter(i => i.id.startsWith("INV-" + ym + "-")).length + 1;
+  return `INV-${ym}-${String(n).padStart(3, "0")}`;
+}
+const TAX_RATE = 0.10;                 // 表示金額は税込のため、請求書上の「内消費税」の計算に使う
+const INVOICE_STATUS = ["下書き", "発行済", "入金済"];
+// { id, date, dueDate, payeeType: "施工代理店"|"取次店", payeeId, lines:[{productId, qty, unitPrice}], shipping, note, status, orderIds }
+let invoices = [];
+let editingInvoice = null;
+
+function addDays(dateStr, days) { const d = new Date(dateStr + "T00:00:00"); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
+function payeeName(inv) { const e = inv.payeeType === "取次店" ? shopById(inv.payeeId) : opById(inv.payeeId); return e ? e.name : "（未選択）"; }
+function payeeBank(inv) { const e = inv.payeeType === "取次店" ? shopById(inv.payeeId) : opById(inv.payeeId); return e && e.bank; }
+function unitPriceFor(product, payeeType) { return payeeType === "取次店" ? (product.shopPrice || product.price) : product.price; }
+function invoiceSubtotal(inv) { return inv.lines.reduce((s, l) => s + (Number(l.unitPrice) || 0) * (Number(l.qty) || 0), 0); }
+function invoiceTotal(inv) { return invoiceSubtotal(inv) + (Number(inv.shipping) || 0); }
+function invoiceTax(inv) { const t = invoiceTotal(inv); return t - Math.round(t / (1 + TAX_RATE)); }
+function invoiceById(id) { return invoices.find(i => i.id === id); }
+function invBadge(s) { return `<span class="badge ${s === "入金済" ? "b-green" : s === "発行済" ? "b-blue" : "b-gray"}">${s}</span>`; }
+
+// 消耗品注文から請求書の下書きを自動作成する（明細は注文内容のまま。あとから編集できる）
+function createInvoiceFromOrder(poId) {
+  const o = supplyOrders.find(x => x.id === poId);
+  if (o.invoiceId) { openInvoiceEditor(o.invoiceId); return; }
+  const p = prodById(o.productId);
+  const inv = {
+    id: nextInvoiceNumber(TODAY), date: TODAY, dueDate: addDays(TODAY, 30),
+    payeeType: "施工代理店", payeeId: o.contractorId,
+    lines: [{ productId: p.id, qty: o.qty, unitPrice: p.price }],
+    shipping: shippingFee(p.price * o.qty), note: `消耗品注文 ${o.id}（${o.date}）分`, status: "下書き", orderIds: [o.id],
+  };
+  invoices.unshift(inv);
+  o.invoiceId = inv.id;
+  openInvoiceEditor(inv.id);
+}
+function createBlankInvoice() {
+  const inv = { id: nextInvoiceNumber(TODAY), date: TODAY, dueDate: addDays(TODAY, 30), payeeType: "施工代理店", payeeId: contractors[0].id, lines: [], shipping: 0, note: "", status: "下書き", orderIds: [] };
+  invoices.unshift(inv);
+  openInvoiceEditor(inv.id);
+}
+
+function renderHqInvoice() {
+  const el = $("page-hq-invoice"); if (!el) return;
+  const unbilled = supplyOrders.filter(o => !o.invoiceId);
+  el.innerHTML = `
+    <div class="page-title">請求書管理</div>
+    <div class="page-desc">消耗品の注文から請求書を自動作成し、内容を確認・修正したうえで発行します（表示金額はすべて税込）</div>
+    <div class="alert alert-info" style="font-size:12px">📄 請求書のフォーマットと管理番号のルールは本部から受領次第差し替えます（現在は仮：番号 INV-年月-連番、支払期限 発行日＋30日）。</div>
+    <div class="toolbar">
+      <div></div>
+      <button class="btn btn-primary" onclick="createBlankInvoice()">＋ 請求書を手動で作成</button>
+    </div>
+    ${unbilled.length ? `
+    <div class="card" style="padding:0;margin-bottom:18px">
+      <div class="section-title" style="margin:14px 16px 6px">未請求の消耗品注文（${unbilled.length}件）</div>
+      <table>
+        <thead><tr><th>注文番号</th><th>注文日</th><th>施工代理店</th><th>商品</th><th>数量</th><th>合計</th><th>状況</th><th></th></tr></thead>
+        <tbody>
+          ${unbilled.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${opById(o.contractorId).name}</td><td>${prodById(o.productId).name}</td><td>${o.qty}</td><td>${yen(poAmount(o))}</td><td>${poBadge(o.status)}</td>
+            <td><button class="btn btn-primary btn-sm" onclick="createInvoiceFromOrder('${o.id}')">請求書を作成</button></td></tr>`).join("")}
+        </tbody>
+      </table>
+    </div>` : ""}
+    <div class="card" style="padding:0">
+      <div class="section-title" style="margin:14px 16px 6px">請求書一覧（${invoices.length}件）</div>
+      <table>
+        <thead><tr><th>管理番号</th><th>発行日</th><th>支払期限</th><th>宛先</th><th>明細</th><th>請求金額</th><th>状況</th><th>操作</th></tr></thead>
+        <tbody>
+          ${invoices.map(i => `
+            <tr>
+              <td><b>${i.id}</b></td><td>${i.date}</td><td>${i.dueDate}</td>
+              <td><span class="badge ${i.payeeType === "取次店" ? "b-blue" : "b-purple"}">${i.payeeType}</span> ${payeeName(i)}</td>
+              <td>${i.lines.length} 行${i.orderIds.length ? `<br><span style="font-size:11px;color:var(--muted)">元注文 ${i.orderIds.join(", ")}</span>` : ""}</td>
+              <td><b>${yen(invoiceTotal(i))}</b></td>
+              <td>${invBadge(i.status)}</td>
+              <td style="white-space:nowrap">
+                <button class="btn btn-ghost btn-sm" onclick="openInvoicePreview('${i.id}')">プレビュー</button>
+                ${i.status === "下書き" ? `<button class="btn btn-ghost btn-sm" onclick="openInvoiceEditor('${i.id}')">編集</button> <button class="btn btn-primary btn-sm" onclick="setInvoiceStatus('${i.id}','発行済')">発行</button>` : ""}
+                ${i.status === "発行済" ? `<button class="btn btn-success btn-sm" onclick="setInvoiceStatus('${i.id}','入金済')">入金済にする</button>` : ""}
+              </td>
+            </tr>`).join("") || `<tr><td colspan="8" style="color:var(--muted)">請求書はまだありません</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+function setInvoiceStatus(id, status) {
+  const inv = invoiceById(id); inv.status = status;
+  if (status === "入金済") inv.orderIds.forEach(oid => { const o = supplyOrders.find(x => x.id === oid); if (o) o.paid = "入金済"; });
+  renderAll();
+}
+
+// ---------- 編集（数字・物品・数量はすべて修正できる。物品はマスタからプルダウンで選ぶ） ----------
+function openInvoiceEditor(id) {
+  editingInvoice = JSON.parse(JSON.stringify(invoiceById(id))); // 保存するまで元データに触らない
+  renderInvoiceEditor();
+}
+function renderInvoiceEditor() {
+  const inv = editingInvoice;
+  const entities = inv.payeeType === "取次店" ? shops : contractors;
+  openModal(`
+    <h2>請求書の編集 — ${inv.id} ${invBadge(inv.status)}</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>宛先の区分</label>
+        <select onchange="invSetPayeeType(this.value)"><option ${inv.payeeType === "施工代理店" ? "selected" : ""}>施工代理店</option><option ${inv.payeeType === "取次店" ? "selected" : ""}>取次店</option></select></div>
+      <div class="form-group"><label>宛先</label>
+        <select onchange="editingInvoice.payeeId = parseInt(this.value)">${entities.map(e => `<option value="${e.id}" ${e.id === inv.payeeId ? "selected" : ""}>${e.name}</option>`).join("")}</select></div>
+      <div class="form-group"><label>発行日</label><input type="date" value="${inv.date}" onchange="editingInvoice.date = this.value"></div>
+      <div class="form-group"><label>支払期限</label><input type="date" value="${inv.dueDate}" onchange="editingInvoice.dueDate = this.value"></div>
+    </div>
+    <div class="section-title">明細（商品はプルダウンから選択・数量と単価は修正可）</div>
+    <div class="card inv-lines" style="padding:0;margin-bottom:10px">
+      <table>
+        <thead><tr><th>商品</th><th>数量</th><th>単価（税込）</th><th>金額</th><th></th></tr></thead>
+        <tbody>
+          ${inv.lines.map((l, i) => `
+            <tr>
+              <td><select onchange="invLineProduct(${i}, parseInt(this.value))">${products.map(p => `<option value="${p.id}" ${p.id === l.productId ? "selected" : ""}>${p.name}${p.published ? "" : "（非公開）"}</option>`).join("")}</select></td>
+              <td><input type="number" min="1" value="${l.qty}" oninput="invLineField(${i}, 'qty', this.value)"></td>
+              <td><input type="number" min="0" step="1" value="${l.unitPrice}" oninput="invLineField(${i}, 'unitPrice', this.value)"></td>
+              <td class="inv-line-amount" id="inv-line-${i}">${yen((Number(l.unitPrice) || 0) * (Number(l.qty) || 0))}</td>
+              <td><button class="btn btn-ghost btn-sm" onclick="invRemoveLine(${i})">削除</button></td>
+            </tr>`).join("") || `<tr><td colspan="5" style="color:var(--muted)">明細がありません。「明細を追加」から商品を選んでください</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-ghost btn-sm" onclick="invAddLine()">＋ 明細を追加</button>
+      <button class="btn btn-ghost btn-sm" onclick="invAutoShipping()">送料を自動計算（${yen(SHIPPING.freeThreshold)}以上無料）</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>送料（税込・修正可）</label><input type="number" min="0" id="inv-shipping" value="${inv.shipping}" oninput="editingInvoice.shipping = Number(this.value) || 0; invRefreshTotals()"></div>
+      <div class="form-group full"><label>備考</label><textarea rows="2" oninput="editingInvoice.note = this.value">${inv.note || ""}</textarea></div>
+    </div>
+    <div id="inv-totals" class="price-box"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-ghost" onclick="saveInvoice(); openInvoicePreview('${inv.id}')">保存してプレビュー</button>
+      <button class="btn btn-primary" onclick="saveInvoice(); closeModal(); renderAll()">保存</button>
+    </div>`);
+  invRefreshTotals();
+}
+function invRefreshTotals() {
+  const inv = editingInvoice;
+  inv.lines.forEach((l, i) => { const c = $("inv-line-" + i); if (c) c.textContent = yen((Number(l.unitPrice) || 0) * (Number(l.qty) || 0)); });
+  $("inv-totals").innerHTML = `
+    <div class="price-row"><span>商品代 小計</span><span>${yen(invoiceSubtotal(inv))}</span></div>
+    <div class="price-row"><span>送料</span><span>${yen(Number(inv.shipping) || 0)}</span></div>
+    <div class="price-row total"><span>請求金額（税込）</span><span>${yen(invoiceTotal(inv))}</span></div>
+    <div class="price-row" style="color:var(--muted);font-size:12px"><span>（内 消費税 ${(TAX_RATE * 100).toFixed(0)}%）</span><span>${yen(invoiceTax(inv))}</span></div>`;
+}
+function invSetPayeeType(t) {
+  editingInvoice.payeeType = t;
+  editingInvoice.payeeId = (t === "取次店" ? shops : contractors)[0].id;
+  editingInvoice.lines.forEach(l => { l.unitPrice = unitPriceFor(prodById(l.productId), t); }); // 取次店向け価格に切り替え
+  renderInvoiceEditor();
+}
+function invLineProduct(i, productId) {
+  const l = editingInvoice.lines[i];
+  l.productId = productId; l.unitPrice = unitPriceFor(prodById(productId), editingInvoice.payeeType);
+  renderInvoiceEditor();
+}
+function invLineField(i, field, value) { editingInvoice.lines[i][field] = Number(value) || 0; invRefreshTotals(); }
+function invAddLine() {
+  const p = orderableProducts()[0] || products[0];
+  editingInvoice.lines.push({ productId: p.id, qty: 1, unitPrice: unitPriceFor(p, editingInvoice.payeeType) });
+  renderInvoiceEditor();
+}
+function invRemoveLine(i) { editingInvoice.lines.splice(i, 1); renderInvoiceEditor(); }
+function invAutoShipping() { editingInvoice.shipping = shippingFee(invoiceSubtotal(editingInvoice)); $("inv-shipping").value = editingInvoice.shipping; invRefreshTotals(); }
+function saveInvoice() {
+  const idx = invoices.findIndex(i => i.id === editingInvoice.id);
+  invoices[idx] = JSON.parse(JSON.stringify(editingInvoice));
+}
+
+// ---------- プレビュー・印刷（フォーマットは本部から受領後にこの関数を差し替える） ----------
+function renderInvoiceDocument(inv) {
+  return `
+    <div class="invoice-doc">
+      <h1>請求書</h1>
+      <div class="inv-head">
+        <div>
+          <div class="inv-to">${payeeName(inv)} 御中</div>
+          <div style="font-size:12px;margin-top:6px">下記のとおりご請求申し上げます。</div>
+          <div class="inv-total">ご請求金額　${yen(invoiceTotal(inv))}（税込）</div>
+        </div>
+        <div class="inv-meta">
+          <div>請求書番号：<b>${inv.id}</b></div>
+          <div>発行日：${inv.date}</div>
+          <div>お支払期限：${inv.dueDate}</div>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th style="width:50%">品名</th><th>数量</th><th>単価（税込）</th><th>金額（税込）</th></tr></thead>
+        <tbody>
+          ${inv.lines.map(l => { const p = prodById(l.productId); return `<tr><td>${p ? p.name : "—"}</td><td class="num">${l.qty} ${p ? p.unit : ""}</td><td class="num">${yen(Number(l.unitPrice) || 0)}</td><td class="num">${yen((Number(l.unitPrice) || 0) * (Number(l.qty) || 0))}</td></tr>`; }).join("")}
+          <tr><td>送料</td><td class="num">—</td><td class="num">—</td><td class="num">${yen(Number(inv.shipping) || 0)}</td></tr>
+          <tr><td colspan="3" style="text-align:right">小計（税込）</td><td class="num">${yen(invoiceTotal(inv))}</td></tr>
+          <tr><td colspan="3" style="text-align:right">（内 消費税 ${(TAX_RATE * 100).toFixed(0)}%）</td><td class="num">${yen(invoiceTax(inv))}</td></tr>
+          <tr><td colspan="3" style="text-align:right"><b>合計ご請求金額</b></td><td class="num"><b>${yen(invoiceTotal(inv))}</b></td></tr>
+        </tbody>
+      </table>
+      ${inv.note ? `<div class="inv-note">備考：${inv.note}</div>` : ""}
+      <div class="inv-issuer">
+        <div><b>${ISSUER.name}</b></div>
+        <div>${ISSUER.address}　TEL ${ISSUER.tel}</div>
+        <div>${ISSUER.regNo}</div>
+        <div style="margin-top:6px">お振込先：${ISSUER.bank}</div>
+        <div style="color:#666">※ 振込手数料は貴社にてご負担ください。</div>
+      </div>
+    </div>`;
+}
+function openInvoicePreview(id) {
+  const inv = invoiceById(id);
+  openModal(`
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <h2 style="margin:0">請求書プレビュー ${invBadge(inv.status)}</h2>
+      <div style="display:flex;gap:8px">
+        ${inv.status === "下書き" ? `<button class="btn btn-ghost btn-sm" onclick="openInvoiceEditor('${inv.id}')">編集に戻る</button>` : ""}
+        <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 印刷 / PDF保存</button>
+      </div>
+    </div>
+    ${renderInvoiceDocument(inv)}
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal(); renderAll()">閉じる</button></div>`);
 }
 
 function renderHqOp() {
