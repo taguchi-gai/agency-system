@@ -333,8 +333,20 @@ let supplyOrders = [
   { id: "PO-0005", date: "2026-06-09", contractorId: 1, productId: 2, qty: 6, status: "受注", paid: "未入金" },
   { id: "PO-0004", date: "2026-06-05", contractorId: 3, productId: 1, qty: 12, status: "出荷済", paid: "入金済" },
   { id: "PO-0003", date: "2026-05-22", contractorId: 2, productId: 1, qty: 10, status: "出荷済", paid: "入金済" },
-  { id: "PO-0002", date: "2026-05-15", contractorId: 1, productId: 1, qty: 20, status: "出荷済", paid: "入金済" },
+  { id: "PO-0002", date: "2026-05-15", contractorId: 1, productId: 1, qty: 20, status: "出荷済", paid: "未入金" },
   { id: "PO-0001", date: "2026-05-01", contractorId: 4, productId: 3, qty: 8, status: "出荷済", paid: "入金済" },
+];
+
+// 本部在庫の入出庫履歴（入庫・出荷・調整）。qty は増減（出荷はマイナス）、after は処理後の在庫
+let stockLogs = [
+  { date: "2026-06-05", productId: 1, type: "出荷", qty: -12, after: 240, note: "PO-0004 関西施工サービス" },
+  { date: "2026-06-01", productId: 1, type: "入庫", qty: 100, after: 252, note: "○○製薬 納品書 No.0612" },
+  { date: "2026-05-22", productId: 1, type: "出荷", qty: -10, after: 152, note: "PO-0003 茨城デタールサービス" },
+  { date: "2026-05-15", productId: 1, type: "出荷", qty: -20, after: 162, note: "PO-0002 クリーンカーワークス東京" },
+  { date: "2026-05-01", productId: 3, type: "出荷", qty: -8, after: 0, note: "PO-0001 東海カークリーン" },
+  { date: "2026-04-25", productId: 1, type: "入庫", qty: 182, after: 182, note: "初回仕入" },
+  { date: "2026-04-25", productId: 2, type: "入庫", qty: 80, after: 80, note: "初回仕入" },
+  { date: "2026-04-25", productId: 3, type: "入庫", qty: 8, after: 8, note: "サンプル入荷" },
 ];
 
 // 契約書（モック）
@@ -697,13 +709,27 @@ function renderHqPo() {
         <div class="card"><div class="stat-label">出荷済</div><div class="stat-value">${yen(sum(shipped))}</div><div class="stat-sub">${shipped.length} 件</div></div>
         <div class="card"><div class="stat-label">未出荷</div><div class="stat-value" style="color:${unshipped.length ? "var(--warning)" : "inherit"}">${yen(sum(unshipped))}</div><div class="stat-sub">${unshipped.length} 件・出荷待ち</div></div>
       </div>`; })()}
-    <div class="section-title">本部在庫</div>
+    <div class="section-title">本部在庫（入庫の登録はここから）</div>
     <div class="cards-row">
       ${products.map(p => `
         <div class="card"><div class="stat-label">${p.name} ${p.published ? "" : '<span class="badge b-gray">非公開</span>'}</div>
         <div class="stat-value" style="color:${p.stock < 70 ? "var(--danger)" : "inherit"}">${p.stock}<span style="font-size:14px"> ${p.unit}</span></div>
-        <div class="stat-sub">${p.stock < 70 ? "⚠ 在庫僅少" : "本部在庫"} / 卸価格 ${yen(p.price)}${p.shopPrice ? ` ・取次店 ${yen(p.shopPrice)} ・小売 ${yen(p.retailPrice)}` : ""}${p.published ? "" : "<br>※ 取次店・施工代理店の注文画面には未表示"}</div></div>`).join("")}
+        <div class="stat-sub">${p.stock < 70 ? "⚠ 在庫僅少" : "本部在庫"} / 卸価格 ${yen(p.price)}${p.shopPrice ? ` ・取次店 ${yen(p.shopPrice)} ・小売 ${yen(p.retailPrice)}` : ""}${p.published ? "" : "<br>※ 取次店・施工代理店の注文画面には未表示"}</div>
+        <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="openStockModal(${p.id}, '入庫')">＋ 入庫を登録</button>
+          <button class="btn btn-ghost btn-sm" onclick="openStockModal(${p.id}, '調整')">在庫数を修正</button>
+        </div></div>`).join("")}
     </div>
+    <div class="card" style="padding:0;margin-bottom:18px">
+      <div class="section-title" style="margin:14px 16px 6px">入出庫履歴（最新20件）</div>
+      <table>
+        <thead><tr><th>日付</th><th>商品</th><th>区分</th><th>数量</th><th>在庫（後）</th><th>備考</th></tr></thead>
+        <tbody>
+          ${stockLogs.slice(0, 20).map(l => `<tr><td>${l.date}</td><td>${prodById(l.productId).name}</td><td><span class="badge ${l.type === "入庫" ? "b-green" : l.type === "出荷" ? "b-blue" : "b-orange"}">${l.type}</span></td><td>${l.qty > 0 ? "+" : ""}${l.qty} ${prodById(l.productId).unit}</td><td>${l.after} ${prodById(l.productId).unit}</td><td style="font-size:12px;color:var(--muted)">${l.note || ""}</td></tr>`).join("") || `<tr><td colspan="6" style="color:var(--muted)">履歴はまだありません</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <div class="section-title">施工代理店からの注文</div>
     <div class="card" style="padding:0">
       <table>
         <thead><tr><th>注文番号</th><th>注文日</th><th>施工代理店</th><th>商品</th><th>数量</th><th>商品代</th><th>送料</th><th>合計</th><th>入金</th><th>状況</th><th>請求書</th><th>操作</th></tr></thead>
@@ -725,10 +751,39 @@ function renderHqPo() {
 }
 function shipPo(poId) {
   const o = supplyOrders.find(x => x.id === poId);
-  o.status = "出荷済";
   const p = prodById(o.productId);
+  if (p.stock < o.qty && !confirm(`在庫が不足しています（在庫 ${p.stock} ${p.unit}、注文 ${o.qty} ${p.unit}）。このまま出荷済にしますか？`)) return;
+  o.status = "出荷済";
   p.stock = Math.max(0, p.stock - o.qty);
+  stockLogs.unshift({ date: TODAY, productId: p.id, type: "出荷", qty: -o.qty, after: p.stock, note: `${o.id} ${opById(o.contractorId).name}` });
   renderAll();
+}
+
+// ---------- 在庫登録（入庫・在庫数の修正） ----------
+function openStockModal(productId, mode) {
+  const p = prodById(productId);
+  openModal(`
+    <h2>${mode === "入庫" ? "入庫を登録" : "在庫数を修正"} — ${p.name}</h2>
+    <div class="alert alert-info" style="font-size:12px">現在の在庫：<b>${p.stock} ${p.unit}</b>${mode === "入庫" ? "。入庫した数量を入力すると在庫に加算されます。" : "。棚卸などで実際の在庫数に合わせるときに使います（差分が履歴に残ります）。"}</div>
+    <div class="form-grid">
+      <div class="form-group"><label>${mode === "入庫" ? "入庫数量" : "実際の在庫数"}</label><input type="number" id="st-qty" min="0" value="${mode === "入庫" ? 100 : p.stock}"></div>
+      <div class="form-group"><label>日付</label><input type="date" id="st-date" value="${TODAY}"></div>
+      <div class="form-group full"><label>備考（仕入先・伝票番号など）</label><input type="text" id="st-note" placeholder="${mode === "入庫" ? "例）○○製薬 納品書 No.1234" : "例）棚卸差異"}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveStock(${p.id}, '${mode}')">${mode === "入庫" ? "入庫を登録" : "在庫数を更新"}</button>
+    </div>`);
+}
+function saveStock(productId, mode) {
+  const p = prodById(productId);
+  const v = parseInt($("st-qty").value);
+  if (isNaN(v) || v < 0) { alert("数量を入力してください"); return; }
+  const delta = mode === "入庫" ? v : v - p.stock;
+  if (delta === 0) { closeModal(); return; }
+  p.stock += delta;
+  stockLogs.unshift({ date: $("st-date").value || TODAY, productId, type: mode === "入庫" ? "入庫" : "調整", qty: delta, after: p.stock, note: $("st-note").value.trim() });
+  closeModal(); renderAll();
 }
 
 function renderHqShop() {
@@ -1035,7 +1090,14 @@ const TAX_RATE = 0.10;                 // 表示金額は税込のため、請�
 // 状態：作成済み（まだ相手に送っていない）→ 送付済み（相手に送った。二重送付防止のため送付日を記録）→ 入金済
 const INVOICE_STATUS = ["作成済み", "送付済み", "入金済"];
 // { id, date, dueDate, payeeType: "施工代理店"|"取次店", payeeId, lines:[{productId, qty, unitPrice}], shipping, note, status, sentAt, orderIds }
-let invoices = [];
+// サンプル：過去に作成・送付・入金済みになった請求書（元注文と紐づく）
+let invoices = [
+  { id: "INV-202606-001", date: "2026-06-06", dueDate: "2026-07-06", payeeType: "施工代理店", payeeId: 3, lines: [{ productId: 1, qty: 12, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0004（2026-06-05）分", status: "入金済", sentAt: "2026-06-06", orderIds: ["PO-0004"] },
+  { id: "INV-202605-002", date: "2026-05-23", dueDate: "2026-06-22", payeeType: "施工代理店", payeeId: 2, lines: [{ productId: 1, qty: 10, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0003（2026-05-22）分", status: "入金済", sentAt: "2026-05-23", orderIds: ["PO-0003"] },
+  { id: "INV-202605-001", date: "2026-05-16", dueDate: "2026-06-15", payeeType: "施工代理店", payeeId: 1, lines: [{ productId: 1, qty: 20, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0002（2026-05-15）分", status: "送付済み", sentAt: "2026-05-16", orderIds: ["PO-0002"] },
+];
+invoices.forEach(inv => inv.orderIds.forEach(oid => { const o = supplyOrders.find(x => x.id === oid); if (o) o.invoiceId = inv.id; }));
+let invoiceFilter = "all"; // 請求書管理の絞り込み（all / 作成済み / 送付済み / 入金済）
 let editingInvoice = null;
 
 function addDays(dateStr, days) { const d = new Date(dateStr + "T00:00:00"); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
@@ -1080,12 +1142,18 @@ function renderHqInvoice() {
     ${unsent ? `<div class="alert alert-warn" style="font-size:12px">⚠ 作成済みでまだ送付していない請求書が ${unsent} 件あります。内容を確認して「送付済みにする」を押してください。</div>` : ""}
     ${unbilled ? `<div class="alert alert-info" style="font-size:12px">📌 請求書が未作成の消耗品注文が ${unbilled} 件あります（消耗品受発注画面で作成できます）。</div>` : ""}
     <div class="alert alert-info" style="font-size:12px">📄 請求書のフォーマットと管理番号のルールは本部から受領次第差し替えます（現在は仮：番号 INV-年月-連番、支払期限 発行日＋30日）。</div>
+    ${(() => {
+      const count = s => invoices.filter(i => i.status === s).length;
+      const tab = (key, label, n) => `<button class="btn btn-sm ${invoiceFilter === key ? "btn-primary" : "btn-ghost"}" onclick="invoiceFilter='${key}'; renderHqInvoice()">${label}（${n}）</button>`;
+      return `<div class="toolbar"><div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${tab("all", "すべて", invoices.length)} ${tab("作成済み", "作成済み・未送付", count("作成済み"))} ${tab("送付済み", "送付済み・入金待ち", count("送付済み"))} ${tab("入金済", "入金済", count("入金済"))}
+      </div><div></div></div>`; })()}
     <div class="card" style="padding:0">
-      <div class="section-title" style="margin:14px 16px 6px">請求書一覧（${invoices.length}件）</div>
+      <div class="section-title" style="margin:14px 16px 6px">請求書一覧${invoiceFilter === "all" ? "" : `：${invoiceFilter}`}（${(invoiceFilter === "all" ? invoices : invoices.filter(i => i.status === invoiceFilter)).length}件）</div>
       <table>
         <thead><tr><th>管理番号</th><th>発行日</th><th>支払期限</th><th>宛先</th><th>明細</th><th>請求金額</th><th>状況</th><th>操作</th></tr></thead>
         <tbody>
-          ${invoices.map(i => `
+          ${(invoiceFilter === "all" ? invoices : invoices.filter(i => i.status === invoiceFilter)).map(i => `
             <tr>
               <td><b>${i.id}</b></td><td>${i.date}</td><td>${i.dueDate}</td>
               <td><span class="badge ${i.payeeType === "取次店" ? "b-blue" : "b-purple"}">${i.payeeType}</span> ${payeeName(i)}</td>
