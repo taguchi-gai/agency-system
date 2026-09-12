@@ -221,21 +221,29 @@ let commissionSettings = {
   paymentFeeRate: 0.035, // 決済代行会社の手数料率（仮。決済代行会社が決まり次第この値を差し替える）
   paymentFeeConfirmed: false, // 決済代行会社が決まったら true
 };
-// 売上から決済手数料を引いた「配分のベースになる金額」
-function distributableAmount(amount) {
+// 1案件ぶんの配分を計算する。
+// 各取り分をそれぞれ四捨五入すると合計が元の売上とズレるため（例：85,800円で1円不足）、
+// 振込額になる取次店・施工代理店を先に確定させ、残り全額を本部の取り分とする。
+// これにより 決済手数料 + 取次店 + 施工代理店 + 本部 = 売上 が必ず一致する。
+function splitOf(amount) {
   if (amount == null) return null;
-  return amount - Math.round(amount * commissionSettings.paymentFeeRate);
+  const fee = Math.round(amount * commissionSettings.paymentFeeRate);
+  const base = amount - fee;
+  const shop = Math.round(base * commissionSettings.shopRate);
+  const contractor = Math.round(base * commissionSettings.contractorRate);
+  return { amount, fee, base, shop, contractor, hq: base - shop - contractor };
 }
-function paymentFeeOf(amount) {
-  return amount == null ? null : Math.round(amount * commissionSettings.paymentFeeRate);
+// 複数案件の配分合計。案件ごとに計算してから足す（決済手数料は1件ごとに発生するため）
+function splitTotal(orders) {
+  return orders.reduce((t, o) => {
+    const s = splitOf(o.amount);
+    if (s) ["amount", "fee", "base", "shop", "contractor", "hq"].forEach(k => t[k] += s[k]);
+    return t;
+  }, { amount: 0, fee: 0, base: 0, shop: 0, contractor: 0, hq: 0 });
 }
-function payoutOf(amount, rate) {
-  const base = distributableAmount(amount);
-  return base == null ? null : Math.round(base * rate);
-}
-const contractorPayout = amount => payoutOf(amount, commissionSettings.contractorRate);
-const shopPayout = amount => payoutOf(amount, commissionSettings.shopRate);
-const hqPayout = amount => payoutOf(amount, commissionSettings.hqRate);
+const contractorPayout = amount => { const s = splitOf(amount); return s && s.contractor; };
+const shopPayout = amount => { const s = splitOf(amount); return s && s.shop; };
+const paymentFeeOf = amount => { const s = splitOf(amount); return s && s.fee; };
 
 const PREFECTURES = [
   "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
@@ -623,6 +631,11 @@ function showSoDetail(soId) {
       <div class="detail-item"><div class="k">施工場所</div><div class="v">${o.customerPref}${o.customerCity}</div></div>
       <div class="detail-item"><div class="k">車種 / 区分</div><div class="v">${o.car} / ${o.carClass || "未判定"}${o.yani ? "（＋やにとり）" : ""}</div></div>
       <div class="detail-item"><div class="k">決済金額</div><div class="v">${yen(o.amount)} ${paymentBadge(o.payment)}</div></div>
+      ${(() => { const s = splitOf(o.amount); return s ? `
+      <div class="detail-item" style="grid-column:1/-1"><div class="k">この案件の配分</div><div class="v" style="font-size:13px">
+        決済手数料 ${yen(s.fee)} ／ 取次店 ${yen(s.shop)} ／ 施工代理店 ${yen(s.contractor)} ／ 本部 ${yen(s.hq)}
+        <span style="color:var(--muted)">（合計 ${yen(s.fee + s.shop + s.contractor + s.hq)}）</span>
+      </div></div>` : ""; })()}
       <div class="detail-item"><div class="k">希望日 / 確定日</div><div class="v">${o.desire} / ${o.scheduled || "未確定"}</div></div>
       <div class="detail-item"><div class="k">施工代理店</div><div class="v">${o.contractorId ? opById(o.contractorId).name : "未割り当て"}</div></div>
       <div class="detail-item" style="grid-column:1/-1"><div class="k">施工前確認</div>
@@ -787,7 +800,7 @@ function renderHqSales() {
       <div class="card"><div class="stat-label">施工売上</div><div class="stat-value">${yen(soTotal)}</div><div class="stat-sub">${so.length} 件</div></div>
       <div class="card"><div class="stat-label">消耗品売上</div><div class="stat-value">${yen(poTotal)}</div><div class="stat-sub">${po.length} 件（送料込み）</div></div>
       <div class="card"><div class="stat-label">売上合計</div><div class="stat-value" style="color:var(--primary-dark)">${yen(soTotal + poTotal)}</div><div class="stat-sub">施工＋消耗品</div></div>
-      <div class="card"><div class="stat-label">本部の取り分（施工分）</div><div class="stat-value">${yen(hqPayout(soTotal))}</div><div class="stat-sub">決済手数料を引いた額の ${(commissionSettings.hqRate * 100).toFixed(0)}%</div></div>
+      <div class="card"><div class="stat-label">本部の取り分（施工分）</div><div class="stat-value">${yen(splitTotal(so).hq)}</div><div class="stat-sub">決済手数料を引いた額の ${(commissionSettings.hqRate * 100).toFixed(0)}%（端数を含む）</div></div>
     </div>
     <div class="card" style="padding:0;margin-bottom:18px">
       <table>
@@ -807,17 +820,20 @@ function renderHqSales() {
     </div>`;
 }
 
-// 月次の支払明細（施工代理店・取次店ごとの配分額）を計算する
+// 月次の支払明細（施工代理店・取次店ごとの配分額）を計算する。
+// 配分は案件ごとに計算してから合算する（決済手数料が1件ごとに発生するため）
 function payoutRows(month) {
   const so = ordersInMonth(serviceOrders, month);
   const rows = [];
   contractors.forEach(c => {
-    const amount = so.filter(o => o.contractorId === c.id).reduce((s, o) => s + (o.amount || 0), 0);
-    if (amount) rows.push({ type: "施工代理店", name: c.name, bank: c.bank, count: so.filter(o => o.contractorId === c.id).length, amount, payout: contractorPayout(amount) });
+    const jobs = so.filter(o => o.contractorId === c.id);
+    const t = splitTotal(jobs);
+    if (t.amount) rows.push({ type: "施工代理店", name: c.name, bank: c.bank, count: jobs.length, amount: t.amount, payout: t.contractor });
   });
   shops.forEach(s => {
-    const amount = so.filter(o => o.shopId === s.id).reduce((t, o) => t + (o.amount || 0), 0);
-    if (amount) rows.push({ type: "取次店", name: s.name, bank: s.bank, count: so.filter(o => o.shopId === s.id).length, amount, payout: shopPayout(amount) });
+    const orders = so.filter(o => o.shopId === s.id);
+    const t = splitTotal(orders);
+    if (t.amount) rows.push({ type: "取次店", name: s.name, bank: s.bank, count: orders.length, amount: t.amount, payout: t.shop });
   });
   return rows;
 }
@@ -828,7 +844,8 @@ function renderHqPayment() {
   if (paymentMonth === null && months.length) paymentMonth = months[0];
   const rows = payoutRows(paymentMonth);
   const total = rows.reduce((s, r) => s + r.payout, 0);
-  const soTotal = ordersInMonth(serviceOrders, paymentMonth).reduce((s, o) => s + (o.amount || 0), 0);
+  const t = splitTotal(ordersInMonth(serviceOrders, paymentMonth));
+  const soTotal = t.amount;
 
   el.innerHTML = `
     <div class="page-title">支払管理</div>
@@ -844,9 +861,19 @@ function renderHqPayment() {
     </div>
     <div class="cards-row">
       <div class="card"><div class="stat-label">対象月の施工売上</div><div class="stat-value">${yen(soTotal)}</div><div class="stat-sub">この金額から配分します</div></div>
-      <div class="card"><div class="stat-label">決済代行手数料</div><div class="stat-value">${yen(paymentFeeOf(soTotal))}</div><div class="stat-sub">${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "（仮）"}</div></div>
+      <div class="card"><div class="stat-label">決済代行手数料</div><div class="stat-value">${yen(t.fee)}</div><div class="stat-sub">${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "（仮）"}</div></div>
       <div class="card"><div class="stat-label">支払合計</div><div class="stat-value" style="color:var(--primary-dark)">${yen(total)}</div><div class="stat-sub">${rows.length} 件の振込</div></div>
-      <div class="card"><div class="stat-label">本部の取り分</div><div class="stat-value">${yen(hqPayout(soTotal))}</div><div class="stat-sub">配分後に本部に残る額</div></div>
+      <div class="card"><div class="stat-label">本部の取り分</div><div class="stat-value">${yen(t.hq)}</div><div class="stat-sub">配分後に本部に残る額（端数を含む）</div></div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="section-title" style="margin-top:0">内訳の確認（1円まで一致します）</div>
+      <div class="price-box" style="margin-top:0">
+        <div class="price-row"><span>決済代行手数料</span><span>${yen(t.fee)}</span></div>
+        <div class="price-row"><span>取次店への支払</span><span>${yen(t.shop)}</span></div>
+        <div class="price-row"><span>施工代理店への支払</span><span>${yen(t.contractor)}</span></div>
+        <div class="price-row"><span>本部の取り分（端数調整を含む）</span><span>${yen(t.hq)}</span></div>
+        <div class="price-row total"><span>合計（＝対象月の施工売上）</span><span>${yen(t.fee + t.shop + t.contractor + t.hq)}</span></div>
+      </div>
     </div>
     ${commissionSettings.paymentFeeConfirmed ? "" : `<div class="alert alert-warn" style="font-size:12px">⚠ 決済代行会社が未定のため、手数料率は仮の ${(commissionSettings.paymentFeeRate * 100).toFixed(1)}% で計算しています。決まり次第この率を差し替えれば、配分額は自動で再計算されます。</div>`}
     <div class="alert alert-info" style="font-size:12px">📄 CSVは関西みらい銀行の総合振込フォーマットに合わせる想定です。正式なフォーマットを本部からいただき次第、項目の並びを差し替えます。</div>
@@ -1191,16 +1218,18 @@ function renderOpJobs() {
   const list = serviceOrders.filter(o => o.contractorId === session.entityId);
   const pending = list.filter(o => o.status === "施工店確認中");
   const doneList = list.filter(o => o.status === "施工完了");
-  const totalAll = list.reduce((s, o) => s + (o.amount || 0), 0);
+  const tAll = splitTotal(list);
+  const totalAll = tAll.amount;
   const totalDone = doneList.reduce((s, o) => s + (o.amount || 0), 0);
   const byShop = {};
   list.forEach(o => {
     const shop = shopById(o.shopId);
-    if (!byShop[shop.id]) byShop[shop.id] = { shop, count: 0, amount: 0 };
-    byShop[shop.id].count++;
-    byShop[shop.id].amount += o.amount || 0;
+    if (!byShop[shop.id]) byShop[shop.id] = { shop, orders: [] };
+    byShop[shop.id].orders.push(o);
   });
-  const shopRows = Object.values(byShop).sort((a, b) => b.amount - a.amount);
+  const shopRows = Object.values(byShop)
+    .map(r => ({ shop: r.shop, count: r.orders.length, ...splitTotal(r.orders) }))
+    .sort((a, b) => b.amount - a.amount);
 
   el.innerHTML = `
     <div class="page-title">施工案件</div>
@@ -1208,11 +1237,11 @@ function renderOpJobs() {
     ${pending.map(o => `<div class="alert alert-warn">⏳ <b>${o.id}</b>（${o.customerPref}${o.customerCity} / ${o.car} / 希望日 ${o.desire}）の対応可否を回答してください。</div>`).join("")}
     <div class="cards-row">
       <div class="card"><div class="stat-label">対応案件の合計金額</div><div class="stat-value">${yen(totalAll)}</div><div class="stat-sub">全${list.length}件（施工完了 ${doneList.length}件・${yen(totalDone)}）</div></div>
-      <div class="card"><div class="stat-label">受取見込み額</div><div class="stat-value" style="color:var(--primary-dark)">${yen(contractorPayout(totalAll))}</div><div class="stat-sub">決済手数料 ${yen(paymentFeeOf(totalAll))} を引いた額の ${(commissionSettings.contractorRate * 100).toFixed(0)}%${commissionSettings.paymentFeeConfirmed ? "" : "<br>※ 手数料率は決済代行会社が決まるまで仮の値です"}</div></div>
+      <div class="card"><div class="stat-label">受取見込み額</div><div class="stat-value" style="color:var(--primary-dark)">${yen(tAll.contractor)}</div><div class="stat-sub">決済手数料 ${yen(tAll.fee)} を引いた額の ${(commissionSettings.contractorRate * 100).toFixed(0)}%${commissionSettings.paymentFeeConfirmed ? "" : "<br>※ 手数料率は決済代行会社が決まるまで仮の値です"}</div></div>
       <div class="card" style="grid-column:span 2">
         <div class="stat-label" style="margin-bottom:8px">取次店ごとの内訳（参考）</div>
         <table style="font-size:12px"><thead><tr><th>取次店</th><th>件数</th><th>金額</th><th>受取見込み</th></tr></thead><tbody>
-          ${shopRows.map(r => `<tr><td>${r.shop.name}</td><td>${r.count}件</td><td>${yen(r.amount)}</td><td>${yen(contractorPayout(r.amount))}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対応案件はありません</td></tr>`}
+          ${shopRows.map(r => `<tr><td>${r.shop.name}</td><td>${r.count}件</td><td>${yen(r.amount)}</td><td>${yen(r.contractor)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対応案件はありません</td></tr>`}
         </tbody></table>
       </div>
     </div>
