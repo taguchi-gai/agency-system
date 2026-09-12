@@ -249,20 +249,20 @@ const PREFECTURES = [
 
 // 取次店（施工代理店が開拓・管理する / 中古車販売・パーツ店など）
 let shops = [
-  { id: 1, code: "SHOP-0001", name: "中古車センターつくば", contractorId: 2, type: "中古車販売", contact: "田村 隆", tel: "029-111-1111", region: "茨城県", status: "稼働中", joined: "2026-03-01" },
-  { id: 2, code: "SHOP-0002", name: "カーパーツ大宮", contractorId: 1, type: "パーツ販売", contact: "小林 誠", tel: "048-222-2222", region: "埼玉県", status: "稼働中", joined: "2026-03-10" },
-  { id: 3, code: "SHOP-0003", name: "横浜オートガレージ", contractorId: 1, type: "中古車販売", contact: "中村 良太", tel: "045-333-3333", region: "神奈川県", status: "稼働中", joined: "2026-04-02" },
-  { id: 4, code: "SHOP-0004", name: "なにわ中古車市場", contractorId: 3, type: "中古車販売", contact: "藤井 健", tel: "06-444-4444", region: "大阪府", status: "稼働中", joined: "2026-04-20" },
-  { id: 5, code: "SHOP-0005", name: "神戸カー用品館", contractorId: 3, type: "パーツ販売", contact: "井上 翔", tel: "078-555-5555", region: "兵庫県", status: "稼働中", joined: "2026-05-08" },
-  { id: 6, code: "SHOP-0006", name: "名古屋カーセレクト", contractorId: 4, type: "中古車販売", contact: "加藤 大輔", tel: "052-666-6666", region: "愛知県", status: "準備中", joined: "2026-06-01" },
+  { id: 1, code: "SHOP-0001", name: "中古車センターつくば", contractorId: 2, type: "中古車販売", contact: "田村 隆", tel: "029-111-1111", region: "茨城県", status: "稼働中", bank: { bankName: "常陽銀行", branchName: "つくば支店", accountType: "普通", accountNumber: "1111111", accountHolder: "ﾁｭｳｺｼｬｾﾝﾀｰﾂｸﾊﾞ(ｶ" }, joined: "2026-03-01" },
+  { id: 2, code: "SHOP-0002", name: "カーパーツ大宮", contractorId: 1, type: "パーツ販売", contact: "小林 誠", tel: "048-222-2222", region: "埼玉県", status: "稼働中", bank: { bankName: "埼玉りそな銀行", branchName: "大宮支店", accountType: "普通", accountNumber: "2222222", accountHolder: "ｶｰﾊﾟｰﾂｵｵﾐﾔ(ｶ" }, joined: "2026-03-10" },
+  { id: 3, code: "SHOP-0003", name: "横浜オートガレージ", contractorId: 1, type: "中古車販売", contact: "中村 良太", tel: "045-333-3333", region: "神奈川県", status: "稼働中", bank: { bankName: "横浜銀行", branchName: "横浜支店", accountType: "普通", accountNumber: "3333333", accountHolder: "ﾖｺﾊﾏｵｰﾄｶﾞﾚｰｼﾞ(ｶ" }, joined: "2026-04-02" },
+  { id: 4, code: "SHOP-0004", name: "なにわ中古車市場", contractorId: 3, type: "中古車販売", contact: "藤井 健", tel: "06-444-4444", region: "大阪府", status: "稼働中", bank: { bankName: "関西みらい銀行", branchName: "難波支店", accountType: "普通", accountNumber: "4444444", accountHolder: "ﾅﾆﾜﾁｭｳｺｼｬｲﾁﾊﾞ(ｶ" }, joined: "2026-04-20" },
+  { id: 5, code: "SHOP-0005", name: "神戸カー用品館", contractorId: 3, type: "パーツ販売", contact: "井上 翔", tel: "078-555-5555", region: "兵庫県", status: "稼働中", bank: { bankName: "三井住友銀行", branchName: "神戸支店", accountType: "普通", accountNumber: "5555555", accountHolder: "ｺｳﾍﾞｶｰﾖｳﾋﾝｶﾝ(ｶ" }, joined: "2026-05-08" },
+  { id: 6, code: "SHOP-0006", name: "名古屋カーセレクト", contractorId: 4, type: "中古車販売", contact: "加藤 大輔", tel: "052-666-6666", region: "愛知県", status: "準備中", bank: { bankName: "三菱UFJ銀行", branchName: "名古屋支店", accountType: "普通", accountNumber: "6666666", accountHolder: "ﾅｺﾞﾔｶｰｾﾚｸﾄ(ｶ" }, joined: "2026-06-01" },
 ];
 
 // 施工代理店（本部の直下。自ら取次店を開拓・管理し、施工も担当する）
 let contractors = [
-  { id: 1, name: "クリーンカーワークス東京", contact: "高橋 健", tel: "03-7777-1111", region: "関東", areas: "東京・埼玉・千葉", prefs: ["東京都", "埼玉県", "千葉県"], status: "稼働中", contractDate: "2026-02-15", renewDate: "2027-02-14", target: 300, demoStatus: "済", availableDays: ["月", "火", "水", "木", "金"], ngDates: ["2026-06-15"] },
-  { id: 2, name: "茨城デタールサービス", contact: "渡辺 修", tel: "029-888-2222", region: "関東", areas: "茨城・栃木", prefs: ["茨城県", "栃木県"], status: "稼働中", contractDate: "2026-03-01", renewDate: "2027-02-28", target: 300, demoStatus: "済", availableDays: ["火", "水", "木", "金", "土"], ngDates: [] },
-  { id: 3, name: "関西施工サービス", contact: "松本 浩", tel: "06-999-3333", region: "関西", areas: "大阪・兵庫・京都", prefs: ["大阪府", "兵庫県", "京都府"], status: "稼働中", contractDate: "2026-04-01", renewDate: "2027-03-31", target: 300, demoStatus: "未", availableDays: ["月", "火", "木", "金"], ngDates: ["2026-06-18", "2026-06-19"] },
-  { id: 4, name: "東海カークリーン", contact: "山口 哲", tel: "052-000-4444", region: "中部", areas: "愛知・岐阜・三重", prefs: ["愛知県", "岐阜県", "三重県"], status: "稼働中", contractDate: "2026-05-15", renewDate: "2027-05-14", target: 300, demoStatus: "未", availableDays: ["月", "水", "木", "金", "土"], ngDates: [] },
+  { id: 1, name: "クリーンカーワークス東京", contact: "高橋 健", tel: "03-7777-1111", region: "関東", areas: "東京・埼玉・千葉", prefs: ["東京都", "埼玉県", "千葉県"], status: "稼働中", contractDate: "2026-02-15", renewDate: "2027-02-14", target: 300, bank: { bankName: "関西みらい銀行", branchName: "東京支店", accountType: "普通", accountNumber: "1234567", accountHolder: "ｸﾘｰﾝｶｰﾜｰｸｽﾄｳｷｮｳ(ｶ" }, demoStatus: "済", availableDays: ["月", "火", "水", "木", "金"], ngDates: ["2026-06-15"] },
+  { id: 2, name: "茨城デタールサービス", contact: "渡辺 修", tel: "029-888-2222", region: "関東", areas: "茨城・栃木", prefs: ["茨城県", "栃木県"], status: "稼働中", contractDate: "2026-03-01", renewDate: "2027-02-28", target: 300, bank: { bankName: "常陽銀行", branchName: "つくば支店", accountType: "普通", accountNumber: "2345678", accountHolder: "ｲﾊﾞﾗｷﾃﾞﾀｰﾙｻｰﾋﾞｽ(ｶ" }, demoStatus: "済", availableDays: ["火", "水", "木", "金", "土"], ngDates: [] },
+  { id: 3, name: "関西施工サービス", contact: "松本 浩", tel: "06-999-3333", region: "関西", areas: "大阪・兵庫・京都", prefs: ["大阪府", "兵庫県", "京都府"], status: "稼働中", contractDate: "2026-04-01", renewDate: "2027-03-31", target: 300, bank: { bankName: "関西みらい銀行", branchName: "大阪本店", accountType: "普通", accountNumber: "3456789", accountHolder: "ｶﾝｻｲｾｺｳｻｰﾋﾞｽ(ｶ" }, demoStatus: "未", availableDays: ["月", "火", "木", "金"], ngDates: ["2026-06-18", "2026-06-19"] },
+  { id: 4, name: "東海カークリーン", contact: "山口 哲", tel: "052-000-4444", region: "中部", areas: "愛知・岐阜・三重", prefs: ["愛知県", "岐阜県", "三重県"], status: "稼働中", contractDate: "2026-05-15", renewDate: "2027-05-14", target: 300, bank: { bankName: "三菱UFJ銀行", branchName: "名古屋支店", accountType: "普通", accountNumber: "4567890", accountHolder: "ﾄｳｶｲｶｰｸﾘｰﾝ(ｶ" }, demoStatus: "未", availableDays: ["月", "水", "木", "金", "土"], ngDates: [] },
 ];
 
 // 施工注文（取次店経由でお客さまから入る注文）
@@ -430,6 +430,8 @@ const NAVS = {
     { id: "hq-dash", icon: "📊", label: "ダッシュボード" },
     { id: "hq-so", icon: "🛎️", label: "施工注文管理" },
     { id: "hq-po", icon: "🧴", label: "消耗品受発注" },
+    { id: "hq-sales", icon: "💹", label: "売上管理" },
+    { id: "hq-payment", icon: "🏦", label: "支払管理" },
     { id: "hq-op", icon: "🧰", label: "施工代理店管理" },
     { id: "hq-shop", icon: "🚙", label: "取次店管理" },
     { id: "hq-contract", icon: "📄", label: "契約書管理" },
@@ -475,7 +477,7 @@ function buildUI() {
 }
 
 function renderAll() {
-  if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqOp(); renderHqShop(); renderHqContract(); }
+  if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqSales(); renderHqPayment(); renderHqOp(); renderHqShop(); renderHqContract(); }
   if (session.role === "shop") { renderShopForm(); renderShopOrders(); }
   if (session.role === "op") { renderOpDash(); renderOpJobs(); renderOpShop(); renderOpPo(); renderOpContract(); }
 }
@@ -728,6 +730,162 @@ function mockQrSvg(seed) {
     } else if (v % 100 < 45) cells += `<rect x="${x}" y="${y}" width="1" height="1"/>`;
   }
   return cells;
+}
+
+// =====================================================
+// 本部：売上管理・支払管理
+// =====================================================
+// 支払いは月初から月末までで締める。'YYYY-MM' を扱う。
+function monthOf(dateStr) { return (dateStr || "").slice(0, 7); }
+function availableMonths() {
+  const set = new Set([...serviceOrders.map(o => monthOf(o.date)), ...supplyOrders.map(o => monthOf(o.date))].filter(Boolean));
+  return [...set].sort().reverse();
+}
+let salesMonth = null;   // 売上管理で選択中の月（null = 全期間）
+let paymentMonth = null; // 支払管理で選択中の締め月
+
+function ordersInMonth(list, month) { return month ? list.filter(o => monthOf(o.date) === month) : list; }
+
+function renderHqSales() {
+  const el = $("page-hq-sales"); if (!el) return;
+  const months = availableMonths();
+  if (salesMonth === null && months.length) salesMonth = months[0];
+  const so = ordersInMonth(serviceOrders, salesMonth);
+  const po = ordersInMonth(supplyOrders, salesMonth);
+  const soTotal = so.reduce((s, o) => s + (o.amount || 0), 0);
+  const poTotal = po.reduce((s, o) => s + (poAmount(o) || 0), 0);
+
+  // 施工代理店ごと：施工を担当した売上と、消耗品の購入額
+  const opRows = contractors.map(c => {
+    const jobs = so.filter(o => o.contractorId === c.id);
+    const amount = jobs.reduce((s, o) => s + (o.amount || 0), 0);
+    const supply = po.filter(o => o.contractorId === c.id).reduce((s, o) => s + (poAmount(o) || 0), 0);
+    return { name: c.name, count: jobs.length, amount, supply };
+  }).filter(r => r.count || r.supply).sort((a, b) => b.amount - a.amount);
+
+  // 取次店ごと：自店経由で入った施工の売上
+  const shopRows = shops.map(s => {
+    const orders = so.filter(o => o.shopId === s.id);
+    const amount = orders.reduce((t, o) => t + (o.amount || 0), 0);
+    return { name: s.name, parent: opById(s.contractorId).name, count: orders.length, amount };
+  }).filter(r => r.count).sort((a, b) => b.amount - a.amount);
+
+  el.innerHTML = `
+    <div class="page-title">売上管理</div>
+    <div class="page-desc">施工売上と消耗品売上を、施工代理店別・取次店別に確認できます（表示金額はすべて税込）</div>
+    <div class="toolbar">
+      <div>
+        <label style="font-size:12px;color:var(--muted);font-weight:bold;margin-right:6px">対象月</label>
+        <select onchange="salesMonth = this.value || null; renderHqSales();">
+          <option value="">全期間</option>
+          ${months.map(m => `<option value="${m}" ${m === salesMonth ? "selected" : ""}>${m.replace("-", "年")}月</option>`).join("")}
+        </select>
+      </div>
+      <div></div>
+    </div>
+    <div class="cards-row">
+      <div class="card"><div class="stat-label">施工売上</div><div class="stat-value">${yen(soTotal)}</div><div class="stat-sub">${so.length} 件</div></div>
+      <div class="card"><div class="stat-label">消耗品売上</div><div class="stat-value">${yen(poTotal)}</div><div class="stat-sub">${po.length} 件（送料込み）</div></div>
+      <div class="card"><div class="stat-label">売上合計</div><div class="stat-value" style="color:var(--primary-dark)">${yen(soTotal + poTotal)}</div><div class="stat-sub">施工＋消耗品</div></div>
+      <div class="card"><div class="stat-label">本部の取り分（施工分）</div><div class="stat-value">${yen(hqPayout(soTotal))}</div><div class="stat-sub">決済手数料を引いた額の ${(commissionSettings.hqRate * 100).toFixed(0)}%</div></div>
+    </div>
+    <div class="card" style="padding:0;margin-bottom:18px">
+      <table>
+        <thead><tr><th>施工代理店</th><th>施工件数</th><th>施工売上</th><th>消耗品購入額</th><th>合計</th></tr></thead>
+        <tbody>
+          ${opRows.map(r => `<tr><td><b>${r.name}</b></td><td>${r.count} 件</td><td>${yen(r.amount)}</td><td>${yen(r.supply)}</td><td><b>${yen(r.amount + r.supply)}</b></td></tr>`).join("") || `<tr><td colspan="5" style="color:var(--muted)">対象月の売上はありません</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>取次店</th><th>開拓した施工代理店</th><th>取次件数</th><th>施工売上</th></tr></thead>
+        <tbody>
+          ${shopRows.map(r => `<tr><td><b>${r.name}</b></td><td>${r.parent}</td><td>${r.count} 件</td><td>${yen(r.amount)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対象月の取次はありません</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// 月次の支払明細（施工代理店・取次店ごとの配分額）を計算する
+function payoutRows(month) {
+  const so = ordersInMonth(serviceOrders, month);
+  const rows = [];
+  contractors.forEach(c => {
+    const amount = so.filter(o => o.contractorId === c.id).reduce((s, o) => s + (o.amount || 0), 0);
+    if (amount) rows.push({ type: "施工代理店", name: c.name, bank: c.bank, count: so.filter(o => o.contractorId === c.id).length, amount, payout: contractorPayout(amount) });
+  });
+  shops.forEach(s => {
+    const amount = so.filter(o => o.shopId === s.id).reduce((t, o) => t + (o.amount || 0), 0);
+    if (amount) rows.push({ type: "取次店", name: s.name, bank: s.bank, count: so.filter(o => o.shopId === s.id).length, amount, payout: shopPayout(amount) });
+  });
+  return rows;
+}
+
+function renderHqPayment() {
+  const el = $("page-hq-payment"); if (!el) return;
+  const months = availableMonths();
+  if (paymentMonth === null && months.length) paymentMonth = months[0];
+  const rows = payoutRows(paymentMonth);
+  const total = rows.reduce((s, r) => s + r.payout, 0);
+  const soTotal = ordersInMonth(serviceOrders, paymentMonth).reduce((s, o) => s + (o.amount || 0), 0);
+
+  el.innerHTML = `
+    <div class="page-title">支払管理</div>
+    <div class="page-desc">月初から月末までで締めた1か月分の配分額です。振込用のCSVをダウンロードして銀行にアップロードします</div>
+    <div class="toolbar">
+      <div>
+        <label style="font-size:12px;color:var(--muted);font-weight:bold;margin-right:6px">締め月</label>
+        <select onchange="paymentMonth = this.value; renderHqPayment();">
+          ${months.map(m => `<option value="${m}" ${m === paymentMonth ? "selected" : ""}>${m.replace("-", "年")}月分</option>`).join("")}
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="downloadTransferCsv()">⬇ 振込CSVをダウンロード</button>
+    </div>
+    <div class="cards-row">
+      <div class="card"><div class="stat-label">対象月の施工売上</div><div class="stat-value">${yen(soTotal)}</div><div class="stat-sub">この金額から配分します</div></div>
+      <div class="card"><div class="stat-label">決済代行手数料</div><div class="stat-value">${yen(paymentFeeOf(soTotal))}</div><div class="stat-sub">${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "（仮）"}</div></div>
+      <div class="card"><div class="stat-label">支払合計</div><div class="stat-value" style="color:var(--primary-dark)">${yen(total)}</div><div class="stat-sub">${rows.length} 件の振込</div></div>
+      <div class="card"><div class="stat-label">本部の取り分</div><div class="stat-value">${yen(hqPayout(soTotal))}</div><div class="stat-sub">配分後に本部に残る額</div></div>
+    </div>
+    ${commissionSettings.paymentFeeConfirmed ? "" : `<div class="alert alert-warn" style="font-size:12px">⚠ 決済代行会社が未定のため、手数料率は仮の ${(commissionSettings.paymentFeeRate * 100).toFixed(1)}% で計算しています。決まり次第この率を差し替えれば、配分額は自動で再計算されます。</div>`}
+    <div class="alert alert-info" style="font-size:12px">📄 CSVは関西みらい銀行の総合振込フォーマットに合わせる想定です。正式なフォーマットを本部からいただき次第、項目の並びを差し替えます。</div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr><th>区分</th><th>支払先</th><th>振込先口座</th><th>件数</th><th>対象売上</th><th>配分率</th><th>支払額</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td><span class="badge ${r.type === "施工代理店" ? "b-purple" : "b-blue"}">${r.type}</span></td>
+              <td><b>${r.name}</b></td>
+              <td style="font-size:12px">${r.bank ? `${r.bank.bankName} ${r.bank.branchName}<br><span style="color:var(--muted)">${r.bank.accountType} ${r.bank.accountNumber} ${r.bank.accountHolder}</span>` : `<span style="color:var(--danger)">未登録</span>`}</td>
+              <td>${r.count} 件</td>
+              <td>${yen(r.amount)}</td>
+              <td>${r.type === "施工代理店" ? (commissionSettings.contractorRate * 100).toFixed(0) : (commissionSettings.shopRate * 100).toFixed(0)}%</td>
+              <td><b>${yen(r.payout)}</b></td>
+            </tr>`).join("") || `<tr><td colspan="7" style="color:var(--muted)">対象月の支払はありません</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// 振込CSVの出力。関西みらい銀行の正式フォーマットを受領したら、この項目定義を差し替える。
+const TRANSFER_CSV_COLUMNS = ["支払区分", "支払先名", "銀行名", "支店名", "預金種目", "口座番号", "口座名義", "振込金額"];
+function downloadTransferCsv() {
+  const rows = payoutRows(paymentMonth);
+  if (!rows.length) { alert("対象月の支払データがありません"); return; }
+  const lines = [TRANSFER_CSV_COLUMNS.join(",")];
+  rows.forEach(r => {
+    const b = r.bank || {};
+    lines.push([r.type, r.name, b.bankName || "", b.branchName || "", b.accountType || "", b.accountNumber || "", b.accountHolder || "", r.payout].join(","));
+  });
+  // Excelで開いたときに文字化けしないようBOMを付ける
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `振込データ_${paymentMonth}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 function renderHqOp() {
