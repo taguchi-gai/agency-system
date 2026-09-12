@@ -535,6 +535,8 @@ function renderHqDash() {
     alerts.push(`<div class="alert alert-warn">⏳ <b>${o.id}</b> は ${opById(o.contractorId).name} の対応可否を確認中です。</div>`));
   supplyOrders.filter(o => o.status === "受注").forEach(o =>
     alerts.push(`<div class="alert alert-info">🧴 消耗品注文 <b>${o.id}</b>（${opById(o.contractorId).name}）が出荷待ちです。</div>`));
+  invoices.filter(i => i.status === "作成済み").forEach(i =>
+    alerts.push(`<div class="alert alert-warn">🧾 請求書 <b>${i.id}</b>（${payeeName(i)}）は作成済みですが、まだ送付していません。</div>`));
 
   el.innerHTML = `
     <div class="page-title">本部ダッシュボード</div>
@@ -714,7 +716,7 @@ function renderHqPo() {
               <td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td>
               <td><b>${yen(poAmount(o))}</b></td>
               <td>${paidBadge(o.paid)}</td><td>${poBadge(o.status)}</td>
-              <td>${o.invoiceId ? `<span class="link" onclick="openInvoicePreview('${o.invoiceId}')">🧾 ${o.invoiceId}</span>` : `<button class="btn btn-ghost btn-sm" onclick="createInvoiceFromOrder('${o.id}')">請求書を作成</button>`}</td>
+              <td>${invoiceCellHtml(o)}</td>
               <td>${o.status === "受注" ? `<button class="btn btn-primary btn-sm" onclick="shipPo('${o.id}')">出荷済にする</button>` : "—"}</td>
             </tr>`).join("")}
         </tbody>
@@ -1030,8 +1032,9 @@ function nextInvoiceNumber(dateStr) {
   return `INV-${ym}-${String(n).padStart(3, "0")}`;
 }
 const TAX_RATE = 0.10;                 // 表示金額は税込のため、請求書上の「内消費税」の計算に使う
-const INVOICE_STATUS = ["下書き", "発行済", "入金済"];
-// { id, date, dueDate, payeeType: "施工代理店"|"取次店", payeeId, lines:[{productId, qty, unitPrice}], shipping, note, status, orderIds }
+// 状態：作成済み（まだ相手に送っていない）→ 送付済み（相手に送った。二重送付防止のため送付日を記録）→ 入金済
+const INVOICE_STATUS = ["作成済み", "送付済み", "入金済"];
+// { id, date, dueDate, payeeType: "施工代理店"|"取次店", payeeId, lines:[{productId, qty, unitPrice}], shipping, note, status, sentAt, orderIds }
 let invoices = [];
 let editingInvoice = null;
 
@@ -1043,9 +1046,15 @@ function invoiceSubtotal(inv) { return inv.lines.reduce((s, l) => s + (Number(l.
 function invoiceTotal(inv) { return invoiceSubtotal(inv) + (Number(inv.shipping) || 0); }
 function invoiceTax(inv) { const t = invoiceTotal(inv); return t - Math.round(t / (1 + TAX_RATE)); }
 function invoiceById(id) { return invoices.find(i => i.id === id); }
-function invBadge(s) { return `<span class="badge ${s === "入金済" ? "b-green" : s === "発行済" ? "b-blue" : "b-gray"}">${s}</span>`; }
+function invBadge(s) { return `<span class="badge ${s === "入金済" ? "b-green" : s === "送付済み" ? "b-blue" : "b-orange"}">${s}</span>`; }
+// 消耗品注文の行に出す「請求書」欄。未作成／作成済み（未送付）／送付済み／入金済 がひと目で分かるようにする
+function invoiceCellHtml(o) {
+  if (!o.invoiceId) return `<button class="btn btn-ghost btn-sm" onclick="createInvoiceFromOrder('${o.id}')">請求書を作成</button>`;
+  const inv = invoiceById(o.invoiceId);
+  return `${invBadge(inv.status)}<br><span class="link" style="font-size:12px" onclick="openInvoicePreview('${inv.id}')">🧾 ${inv.id}</span>${inv.sentAt ? `<br><span style="font-size:11px;color:var(--muted)">${inv.sentAt} 送付</span>` : ""}`;
+}
 
-// 消耗品注文から請求書の下書きを自動作成する（明細は注文内容のまま。あとから編集できる）
+// 消耗品注文から請求書を自動作成する（明細は注文内容のまま。送付前なら編集できる）
 function createInvoiceFromOrder(poId) {
   const o = supplyOrders.find(x => x.id === poId);
   if (o.invoiceId) { openInvoiceEditor(o.invoiceId); return; }
@@ -1054,40 +1063,23 @@ function createInvoiceFromOrder(poId) {
     id: nextInvoiceNumber(TODAY), date: TODAY, dueDate: addDays(TODAY, 30),
     payeeType: "施工代理店", payeeId: o.contractorId,
     lines: [{ productId: p.id, qty: o.qty, unitPrice: p.price }],
-    shipping: shippingFee(p.price * o.qty), note: `消耗品注文 ${o.id}（${o.date}）分`, status: "下書き", orderIds: [o.id],
+    shipping: shippingFee(p.price * o.qty), note: `消耗品注文 ${o.id}（${o.date}）分`, status: "作成済み", sentAt: null, orderIds: [o.id],
   };
   invoices.unshift(inv);
   o.invoiceId = inv.id;
   openInvoiceEditor(inv.id);
 }
-function createBlankInvoice() {
-  const inv = { id: nextInvoiceNumber(TODAY), date: TODAY, dueDate: addDays(TODAY, 30), payeeType: "施工代理店", payeeId: contractors[0].id, lines: [], shipping: 0, note: "", status: "下書き", orderIds: [] };
-  invoices.unshift(inv);
-  openInvoiceEditor(inv.id);
-}
-
 function renderHqInvoice() {
   const el = $("page-hq-invoice"); if (!el) return;
-  const unbilled = supplyOrders.filter(o => !o.invoiceId);
+  const unsent = invoices.filter(i => i.status === "作成済み").length;
+  const unbilled = supplyOrders.filter(o => !o.invoiceId).length;
   el.innerHTML = `
     <div class="page-title">請求書管理</div>
-    <div class="page-desc">消耗品の注文から請求書を自動作成し、内容を確認・修正したうえで発行します（表示金額はすべて税込）</div>
+    <div class="page-desc">作成済みの請求書を確認・修正し、送付と入金を記録します（表示金額はすべて税込）</div>
+    <div class="alert alert-info" style="font-size:12px">🧾 請求書の作成は<b>「消耗品受発注」画面の各注文の行</b>から行います（この画面では作成しません）。作成した請求書は「作成済み」→ 相手に送ったら「送付済み」→ 入金を確認したら「入金済」と進めます。</div>
+    ${unsent ? `<div class="alert alert-warn" style="font-size:12px">⚠ 作成済みでまだ送付していない請求書が ${unsent} 件あります。内容を確認して「送付済みにする」を押してください。</div>` : ""}
+    ${unbilled ? `<div class="alert alert-info" style="font-size:12px">📌 請求書が未作成の消耗品注文が ${unbilled} 件あります（消耗品受発注画面で作成できます）。</div>` : ""}
     <div class="alert alert-info" style="font-size:12px">📄 請求書のフォーマットと管理番号のルールは本部から受領次第差し替えます（現在は仮：番号 INV-年月-連番、支払期限 発行日＋30日）。</div>
-    <div class="toolbar">
-      <div></div>
-      <button class="btn btn-primary" onclick="createBlankInvoice()">＋ 請求書を手動で作成</button>
-    </div>
-    ${unbilled.length ? `
-    <div class="card" style="padding:0;margin-bottom:18px">
-      <div class="section-title" style="margin:14px 16px 6px">未請求の消耗品注文（${unbilled.length}件）</div>
-      <table>
-        <thead><tr><th>注文番号</th><th>注文日</th><th>施工代理店</th><th>商品</th><th>数量</th><th>合計</th><th>状況</th><th></th></tr></thead>
-        <tbody>
-          ${unbilled.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${opById(o.contractorId).name}</td><td>${prodById(o.productId).name}</td><td>${o.qty}</td><td>${yen(poAmount(o))}</td><td>${poBadge(o.status)}</td>
-            <td><button class="btn btn-primary btn-sm" onclick="createInvoiceFromOrder('${o.id}')">請求書を作成</button></td></tr>`).join("")}
-        </tbody>
-      </table>
-    </div>` : ""}
     <div class="card" style="padding:0">
       <div class="section-title" style="margin:14px 16px 6px">請求書一覧（${invoices.length}件）</div>
       <table>
@@ -1102,8 +1094,8 @@ function renderHqInvoice() {
               <td>${invBadge(i.status)}</td>
               <td style="white-space:nowrap">
                 <button class="btn btn-ghost btn-sm" onclick="openInvoicePreview('${i.id}')">プレビュー</button>
-                ${i.status === "下書き" ? `<button class="btn btn-ghost btn-sm" onclick="openInvoiceEditor('${i.id}')">編集</button> <button class="btn btn-primary btn-sm" onclick="setInvoiceStatus('${i.id}','発行済')">発行</button>` : ""}
-                ${i.status === "発行済" ? `<button class="btn btn-success btn-sm" onclick="setInvoiceStatus('${i.id}','入金済')">入金済にする</button>` : ""}
+                ${i.status === "作成済み" ? `<button class="btn btn-ghost btn-sm" onclick="openInvoiceEditor('${i.id}')">編集</button> <button class="btn btn-primary btn-sm" onclick="setInvoiceStatus('${i.id}','送付済み')">送付済みにする</button>` : ""}
+                ${i.status === "送付済み" ? `<span style="font-size:11px;color:var(--muted)">${i.sentAt} 送付</span> <button class="btn btn-success btn-sm" onclick="setInvoiceStatus('${i.id}','入金済')">入金済にする</button>` : ""}
               </td>
             </tr>`).join("") || `<tr><td colspan="8" style="color:var(--muted)">請求書はまだありません</td></tr>`}
         </tbody>
@@ -1111,14 +1103,22 @@ function renderHqInvoice() {
     </div>`;
 }
 function setInvoiceStatus(id, status) {
-  const inv = invoiceById(id); inv.status = status;
+  const inv = invoiceById(id);
+  if (status === "送付済み") {
+    if (inv.sentAt && !confirm(`この請求書は ${inv.sentAt} に送付済みです。もう一度送付済みとして記録しますか？`)) return;
+    inv.sentAt = TODAY; // 二重送付防止のため送付日を残す（本番では送付時刻）
+  }
+  inv.status = status;
   if (status === "入金済") inv.orderIds.forEach(oid => { const o = supplyOrders.find(x => x.id === oid); if (o) o.paid = "入金済"; });
   renderAll();
 }
 
 // ---------- 編集（数字・物品・数量はすべて修正できる。物品はマスタからプルダウンで選ぶ） ----------
 function openInvoiceEditor(id) {
-  editingInvoice = JSON.parse(JSON.stringify(invoiceById(id))); // 保存するまで元データに触らない
+  const inv = invoiceById(id);
+  // 送付済み・入金済の請求書は内容を変えない（相手に渡した内容と食い違わないようにする）
+  if (inv.status !== "作成済み") { openInvoicePreview(id); return; }
+  editingInvoice = JSON.parse(JSON.stringify(inv)); // 保存するまで元データに触らない
   renderInvoiceEditor();
 }
 function renderInvoiceEditor() {
@@ -1242,10 +1242,12 @@ function openInvoicePreview(id) {
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
       <h2 style="margin:0">請求書プレビュー ${invBadge(inv.status)}</h2>
       <div style="display:flex;gap:8px">
-        ${inv.status === "下書き" ? `<button class="btn btn-ghost btn-sm" onclick="openInvoiceEditor('${inv.id}')">編集に戻る</button>` : ""}
+        ${inv.status === "作成済み" ? `<button class="btn btn-ghost btn-sm" onclick="openInvoiceEditor('${inv.id}')">編集に戻る</button>` : ""}
         <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 印刷 / PDF保存</button>
+        ${inv.status === "作成済み" ? `<button class="btn btn-success btn-sm" onclick="setInvoiceStatus('${inv.id}','送付済み'); openInvoicePreview('${inv.id}')">送付済みにする</button>` : ""}
       </div>
     </div>
+    ${inv.sentAt ? `<div class="alert alert-warn" style="font-size:13px">⚠ この請求書は <b>${inv.sentAt}</b> に送付済みです。再送しないようご注意ください${inv.status === "入金済" ? "（入金も確認済み）" : ""}。</div>` : ""}
     ${renderInvoiceDocument(inv)}
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal(); renderAll()">閉じる</button></div>`);
 }
