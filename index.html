@@ -188,29 +188,22 @@ const PREFECTURES = [
   "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
 ];
 
-// 加盟店（最初は10社目標 → サンプル3社）
-let franchises = [
-  { id: 1, name: "株式会社オートライフ関東", contact: "山田 太郎", tel: "03-1234-5678", region: "関東", contractDate: "2026-02-01", renewDate: "2027-01-31", target: 300 },
-  { id: 2, name: "西日本カーネット株式会社", contact: "佐藤 花子", tel: "06-9876-5432", region: "関西", contractDate: "2026-03-15", renewDate: "2027-03-14", target: 300 },
-  { id: 3, name: "中部モビリティパートナーズ", contact: "鈴木 一郎", tel: "052-111-2222", region: "中部", contractDate: "2026-05-01", renewDate: "2027-04-30", target: 300 },
-];
-
-// 取次店（加盟店に紐づく / 中古車販売・パーツ店など）
+// 取次店（施工代理店が開拓・管理する / 中古車販売・パーツ店など）
 let shops = [
-  { id: 1, code: "SHOP-0001", name: "中古車センターつくば", franchiseId: 1, type: "中古車販売", contact: "田村 隆", tel: "029-111-1111", region: "茨城県", status: "稼働中", joined: "2026-03-01" },
-  { id: 2, code: "SHOP-0002", name: "カーパーツ大宮", franchiseId: 1, type: "パーツ販売", contact: "小林 誠", tel: "048-222-2222", region: "埼玉県", status: "稼働中", joined: "2026-03-10" },
-  { id: 3, code: "SHOP-0003", name: "横浜オートガレージ", franchiseId: 1, type: "中古車販売", contact: "中村 良太", tel: "045-333-3333", region: "神奈川県", status: "稼働中", joined: "2026-04-02" },
-  { id: 4, code: "SHOP-0004", name: "なにわ中古車市場", franchiseId: 2, type: "中古車販売", contact: "藤井 健", tel: "06-444-4444", region: "大阪府", status: "稼働中", joined: "2026-04-20" },
-  { id: 5, code: "SHOP-0005", name: "神戸カー用品館", franchiseId: 2, type: "パーツ販売", contact: "井上 翔", tel: "078-555-5555", region: "兵庫県", status: "稼働中", joined: "2026-05-08" },
-  { id: 6, code: "SHOP-0006", name: "名古屋カーセレクト", franchiseId: 3, type: "中古車販売", contact: "加藤 大輔", tel: "052-666-6666", region: "愛知県", status: "準備中", joined: "2026-06-01" },
+  { id: 1, code: "SHOP-0001", name: "中古車センターつくば", contractorId: 2, type: "中古車販売", contact: "田村 隆", tel: "029-111-1111", region: "茨城県", status: "稼働中", joined: "2026-03-01" },
+  { id: 2, code: "SHOP-0002", name: "カーパーツ大宮", contractorId: 1, type: "パーツ販売", contact: "小林 誠", tel: "048-222-2222", region: "埼玉県", status: "稼働中", joined: "2026-03-10" },
+  { id: 3, code: "SHOP-0003", name: "横浜オートガレージ", contractorId: 1, type: "中古車販売", contact: "中村 良太", tel: "045-333-3333", region: "神奈川県", status: "稼働中", joined: "2026-04-02" },
+  { id: 4, code: "SHOP-0004", name: "なにわ中古車市場", contractorId: 3, type: "中古車販売", contact: "藤井 健", tel: "06-444-4444", region: "大阪府", status: "稼働中", joined: "2026-04-20" },
+  { id: 5, code: "SHOP-0005", name: "神戸カー用品館", contractorId: 3, type: "パーツ販売", contact: "井上 翔", tel: "078-555-5555", region: "兵庫県", status: "稼働中", joined: "2026-05-08" },
+  { id: 6, code: "SHOP-0006", name: "名古屋カーセレクト", contractorId: 4, type: "中古車販売", contact: "加藤 大輔", tel: "052-666-6666", region: "愛知県", status: "準備中", joined: "2026-06-01" },
 ];
 
-// 施工代理店
+// 施工代理店（本部の直下。自ら取次店を開拓・管理し、施工も担当する）
 let contractors = [
-  { id: 1, name: "クリーンカーワークス東京", contact: "高橋 健", tel: "03-7777-1111", region: "関東", areas: "東京・埼玉・千葉", prefs: ["東京都", "埼玉県", "千葉県"], status: "稼働中", contractDate: "2026-02-15", renewDate: "2027-02-14", demoStatus: "済", availableDays: ["月", "火", "水", "木", "金"], ngDates: ["2026-06-15"] },
-  { id: 2, name: "茨城デタールサービス", contact: "渡辺 修", tel: "029-888-2222", region: "関東", areas: "茨城・栃木", prefs: ["茨城県", "栃木県"], status: "稼働中", contractDate: "2026-03-01", renewDate: "2027-02-28", demoStatus: "済", availableDays: ["火", "水", "木", "金", "土"], ngDates: [] },
-  { id: 3, name: "関西施工サービス", contact: "松本 浩", tel: "06-999-3333", region: "関西", areas: "大阪・兵庫・京都", prefs: ["大阪府", "兵庫県", "京都府"], status: "稼働中", contractDate: "2026-04-01", renewDate: "2027-03-31", demoStatus: "未", availableDays: ["月", "火", "木", "金"], ngDates: ["2026-06-18", "2026-06-19"] },
-  { id: 4, name: "東海カークリーン", contact: "山口 哲", tel: "052-000-4444", region: "中部", areas: "愛知・岐阜・三重", prefs: ["愛知県", "岐阜県", "三重県"], status: "稼働中", contractDate: "2026-05-15", renewDate: "2027-05-14", demoStatus: "未", availableDays: ["月", "水", "木", "金", "土"], ngDates: [] },
+  { id: 1, name: "クリーンカーワークス東京", contact: "高橋 健", tel: "03-7777-1111", region: "関東", areas: "東京・埼玉・千葉", prefs: ["東京都", "埼玉県", "千葉県"], status: "稼働中", contractDate: "2026-02-15", renewDate: "2027-02-14", target: 300, demoStatus: "済", availableDays: ["月", "火", "水", "木", "金"], ngDates: ["2026-06-15"] },
+  { id: 2, name: "茨城デタールサービス", contact: "渡辺 修", tel: "029-888-2222", region: "関東", areas: "茨城・栃木", prefs: ["茨城県", "栃木県"], status: "稼働中", contractDate: "2026-03-01", renewDate: "2027-02-28", target: 300, demoStatus: "済", availableDays: ["火", "水", "木", "金", "土"], ngDates: [] },
+  { id: 3, name: "関西施工サービス", contact: "松本 浩", tel: "06-999-3333", region: "関西", areas: "大阪・兵庫・京都", prefs: ["大阪府", "兵庫県", "京都府"], status: "稼働中", contractDate: "2026-04-01", renewDate: "2027-03-31", target: 300, demoStatus: "未", availableDays: ["月", "火", "木", "金"], ngDates: ["2026-06-18", "2026-06-19"] },
+  { id: 4, name: "東海カークリーン", contact: "山口 哲", tel: "052-000-4444", region: "中部", areas: "愛知・岐阜・三重", prefs: ["愛知県", "岐阜県", "三重県"], status: "稼働中", contractDate: "2026-05-15", renewDate: "2027-05-14", target: 300, demoStatus: "未", availableDays: ["月", "水", "木", "金", "土"], ngDates: [] },
 ];
 
 // 施工注文（取次店経由でお客さまから入る注文）
@@ -247,20 +240,19 @@ let supplyOrders = [
 
 // 契約書（モック）
 let contracts = [
-  { id: 1, layer: "加盟店", entity: "株式会社オートライフ関東", file: "加盟店契約書_オートライフ関東.pdf", uploaded: "2026-02-01", feeAmount: 1000000, feePaid: "入金済" },
-  { id: 2, layer: "加盟店", entity: "西日本カーネット株式会社", file: "加盟店契約書_西日本カーネット.pdf", uploaded: "2026-03-15", feeAmount: 1000000, feePaid: "未入金" },
-  { id: 3, layer: "施工代理店", entity: "クリーンカーワークス東京", file: "施工代理店契約書_クリーンカーワークス.pdf", uploaded: "2026-02-15", feeAmount: null, feePaid: null },
+  { id: 1, layer: "施工代理店", entity: "クリーンカーワークス東京", file: "施工代理店契約書_クリーンカーワークス.pdf", uploaded: "2026-02-15", feeAmount: 1100000, feePaid: "入金済" },
+  { id: 2, layer: "施工代理店", entity: "茨城デタールサービス", file: "施工代理店契約書_茨城デタール.pdf", uploaded: "2026-03-01", feeAmount: 1100000, feePaid: "入金済" },
+  { id: 3, layer: "施工代理店", entity: "関西施工サービス", file: "施工代理店契約書_関西施工サービス.pdf", uploaded: "2026-04-01", feeAmount: 1100000, feePaid: "未入金" },
   { id: 4, layer: "取次店", entity: "中古車センターつくば", file: "取次店規約同意書_つくば.pdf", uploaded: "2026-03-01", feeAmount: null, feePaid: null },
 ];
 
 // =====================================================
 // 状態・ユーティリティ
 // =====================================================
-let session = { role: null, entityId: null }; // role: hq / fc / shop / op
+let session = { role: null, entityId: null }; // role: hq / shop / op
 
 const $ = id => document.getElementById(id);
 const yen = n => n == null ? "金額確認中" : "¥" + n.toLocaleString();
-const fcById = id => franchises.find(f => f.id === id);
 const shopById = id => shops.find(s => s.id === id);
 const opById = id => contractors.find(c => c.id === id);
 const prodById = id => products.find(p => p.id === id);
@@ -305,10 +297,9 @@ function flowHtml(status) {
 // ログイン
 // =====================================================
 const ROLES = [
-  { key: "hq", icon: "🏛️", name: "本部", desc: "全体の管理・施工割り当て・受発注管理" },
-  { key: "fc", icon: "🏢", name: "加盟店", desc: "自社が獲得した取次店の管理（目標300店）" },
+  { key: "hq", icon: "🏛️", name: "本部", desc: "全体の管理・施工割り当て・売上と支払の管理" },
+  { key: "op", icon: "🧰", name: "施工代理店", desc: "取次店の開拓・施工案件の対応・消耗品の発注" },
   { key: "shop", icon: "🚙", name: "取次店", desc: "お客さまの取次・注文状況の確認" },
-  { key: "op", icon: "🧰", name: "施工代理店", desc: "施工案件の対応・消耗品の発注" },
 ];
 
 function renderLogin() {
@@ -320,7 +311,7 @@ function renderLogin() {
 }
 function pickRole(role) {
   if (role === "hq") { login(role, null); return; }
-  const list = role === "fc" ? franchises : role === "shop" ? shops : contractors;
+  const list = role === "shop" ? shops : contractors;
   $("role-select-area").innerHTML = `
     <div class="login-select">
       <label style="font-size:12px;color:var(--muted);font-weight:bold">どの${ROLES.find(r => r.key === role).name}としてログインしますか？</label>
@@ -354,29 +345,25 @@ const NAVS = {
     { id: "hq-dash", icon: "📊", label: "ダッシュボード" },
     { id: "hq-so", icon: "🛎️", label: "施工注文管理" },
     { id: "hq-po", icon: "🧴", label: "消耗品受発注" },
-    { id: "hq-fc", icon: "🏢", label: "加盟店管理" },
-    { id: "hq-shop", icon: "🚙", label: "取次店管理" },
     { id: "hq-op", icon: "🧰", label: "施工代理店管理" },
+    { id: "hq-shop", icon: "🚙", label: "取次店管理" },
     { id: "hq-contract", icon: "📄", label: "契約書管理" },
   ],
-  fc: [
-    { id: "fc-dash", icon: "📊", label: "ダッシュボード" },
-    { id: "fc-shop", icon: "🚙", label: "取次店管理" },
-    { id: "fc-contract", icon: "📄", label: "契約書" },
+  op: [
+    { id: "op-dash", icon: "📊", label: "ダッシュボード" },
+    { id: "op-jobs", icon: "🧰", label: "施工案件" },
+    { id: "op-shop", icon: "🚙", label: "取次店管理" },
+    { id: "op-po", icon: "🧴", label: "消耗品注文" },
+    { id: "op-contract", icon: "📄", label: "契約書" },
   ],
   shop: [
     { id: "shop-form", icon: "📝", label: "注文フォーム（QR）" },
     { id: "shop-orders", icon: "🛎️", label: "取次履歴" },
   ],
-  op: [
-    { id: "op-jobs", icon: "🧰", label: "施工案件" },
-    { id: "op-po", icon: "🧴", label: "消耗品注文" },
-  ],
 };
 
 function entityName() {
   if (session.role === "hq") return "本部 管理者";
-  if (session.role === "fc") return fcById(session.entityId).name;
   if (session.role === "shop") return shopById(session.entityId).name;
   return opById(session.entityId).name;
 }
@@ -399,10 +386,9 @@ function buildUI() {
 }
 
 function renderAll() {
-  if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqFc(); renderHqShop(); renderHqOp(); renderHqContract(); }
-  if (session.role === "fc") { renderFcDash(); renderFcShop(); renderFcContract(); }
+  if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqOp(); renderHqShop(); renderHqContract(); }
   if (session.role === "shop") { renderShopForm(); renderShopOrders(); }
-  if (session.role === "op") { renderOpJobs(); renderOpPo(); }
+  if (session.role === "op") { renderOpDash(); renderOpJobs(); renderOpShop(); renderOpPo(); renderOpContract(); }
 }
 
 // =====================================================
@@ -427,10 +413,10 @@ function renderHqDash() {
 
   el.innerHTML = `
     <div class="page-title">本部ダッシュボード</div>
-    <div class="page-desc">事業全体の状況：本部 ➨ 加盟店 ${franchises.length} 社 ➨ 取次店 ${shops.length} 店 ➨ 施工代理店 ${contractors.length} 社</div>
+    <div class="page-desc">事業全体の状況：本部 ➨ 施工代理店 ${contractors.length} 社 ➨ 取次店 ${shops.length} 店 ➨ お客さま</div>
     <div class="cards-row">
       <div class="card"><div class="stat-label">未対応の施工注文</div><div class="stat-value" style="color:${newSo ? "var(--danger)" : "inherit"}">${newSo}<span style="font-size:14px"> 件</span></div><div class="stat-sub">確認中 ${waitSo} 件 / 完了 ${doneSo} 件</div></div>
-      <div class="card"><div class="stat-label">稼働取次店</div><div class="stat-value">${activeShops}<span style="font-size:14px"> 店</span></div><div class="stat-sub">目標 3,000 店（加盟店${franchises.length}社 × 300店）</div></div>
+      <div class="card"><div class="stat-label">稼働取次店</div><div class="stat-value">${activeShops}<span style="font-size:14px"> 店</span></div><div class="stat-sub">目標 3,000 店（施工代理店10社 × 300店）</div></div>
       <div class="card"><div class="stat-label">消耗品 出荷待ち</div><div class="stat-value" style="color:${poUnshipped ? "var(--warning)" : "inherit"}">${poUnshipped}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工代理店からの注文</div></div>
       <div class="card"><div class="stat-label">消耗品 累計売上</div><div class="stat-value">${yen(poSales)}</div><div class="stat-sub">2026年5月〜</div></div>
     </div>
@@ -440,11 +426,11 @@ function renderHqDash() {
         ${alerts.join("") || `<div style="color:var(--muted)">対応が必要な項目はありません</div>`}
       </div>
       <div class="card">
-        <div class="section-title" style="margin-top:0">加盟店別 取次店獲得状況</div>
-        <table><thead><tr><th>加盟店</th><th>獲得数</th><th>目標</th></tr></thead><tbody>
-          ${franchises.map(f => {
-            const n = shops.filter(s => s.franchiseId === f.id).length;
-            return `<tr><td>${f.name}</td><td><b>${n}</b> 店</td><td style="color:var(--muted)">${f.target} 店</td></tr>`;
+        <div class="section-title" style="margin-top:0">施工代理店別 取次店獲得状況</div>
+        <table><thead><tr><th>施工代理店</th><th>獲得数</th><th>目標</th></tr></thead><tbody>
+          ${contractors.map(c => {
+            const n = shops.filter(s => s.contractorId === c.id).length;
+            return `<tr><td>${c.name}</td><td><b>${n}</b> 店</td><td style="color:var(--muted)">${c.target} 店</td></tr>`;
           }).join("")}
         </tbody></table>
       </div>
@@ -541,7 +527,7 @@ function showSoDetail(soId) {
     ${flowHtml(o.status)}
     <div class="detail-grid">
       <div class="detail-item"><div class="k">受付日</div><div class="v">${o.date}</div></div>
-      <div class="detail-item"><div class="k">取次店</div><div class="v">${shop.name}（${shop.region} / ${fcById(shop.franchiseId).name} 系列）</div></div>
+      <div class="detail-item"><div class="k">取次店</div><div class="v">${shop.name}（${shop.region} / ${opById(shop.contractorId).name} 開拓）</div></div>
       <div class="detail-item"><div class="k">お客さま</div><div class="v">${o.customer}（${o.customerTel}）</div></div>
       <div class="detail-item"><div class="k">施工場所</div><div class="v">${o.customerPref}${o.customerCity}</div></div>
       <div class="detail-item"><div class="k">車種 / 区分</div><div class="v">${o.car} / ${o.carClass || "未判定"}${o.yani ? "（＋やにとり）" : ""}</div></div>
@@ -597,38 +583,19 @@ function shipPo(poId) {
   renderAll();
 }
 
-function renderHqFc() {
-  const el = $("page-hq-fc"); if (!el) return;
-  el.innerHTML = `
-    <div class="page-title">加盟店管理</div>
-    <div class="page-desc">取次店を募集する加盟店（目標10社）を管理します</div>
-    <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのため簡略化しています（本番では登録フォームを表示）')">＋ 加盟店を登録</button></div>
-    <div class="card" style="padding:0">
-      <table>
-        <thead><tr><th>加盟店名</th><th>担当者</th><th>地域</th><th>獲得取次店</th><th>契約日</th><th>更新期限</th></tr></thead>
-        <tbody>
-          ${franchises.map(f => `
-            <tr><td><b>${f.name}</b></td><td>${f.contact}</td><td>${f.region}</td>
-            <td><b>${shops.filter(s => s.franchiseId === f.id).length}</b> / ${f.target} 店</td>
-            <td>${f.contractDate}</td><td>${f.renewDate}</td></tr>`).join("")}
-        </tbody>
-      </table>
-    </div>`;
-}
-
 function renderHqShop() {
   const el = $("page-hq-shop"); if (!el) return;
   el.innerHTML = `
     <div class="page-title">取次店管理</div>
-    <div class="page-desc">全加盟店配下の取次店（目標3,000店）。各店にQRコード付き専用注文URLを発行します</div>
+    <div class="page-desc">各施工代理店が開拓した取次店（目標3,000店）。各店にQRコード付き専用注文URLを発行します</div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>店舗コード</th><th>店舗名</th><th>業種</th><th>地域</th><th>所属加盟店</th><th>状態</th><th>取次数</th><th>専用QR</th></tr></thead>
+        <thead><tr><th>店舗コード</th><th>店舗名</th><th>業種</th><th>地域</th><th>開拓した施工代理店</th><th>状態</th><th>取次数</th><th>専用QR</th></tr></thead>
         <tbody>
           ${shops.map(s => `
             <tr>
               <td><b>${s.code}</b></td><td>${s.name}</td><td>${s.type}</td><td>${s.region}</td>
-              <td>${fcById(s.franchiseId).name}</td><td>${stBadge(s.status)}</td>
+              <td>${opById(s.contractorId).name}</td><td>${stBadge(s.status)}</td>
               <td>${serviceOrders.filter(o => o.shopId === s.id).length} 件</td>
               <td><span class="link" onclick="showQr(${s.id})">📱 QR表示</span></td>
             </tr>`).join("")}
@@ -674,16 +641,17 @@ function renderHqOp() {
   const el = $("page-hq-op"); if (!el) return;
   el.innerHTML = `
     <div class="page-title">施工代理店管理</div>
-    <div class="page-desc">施工を担当する代理店を管理します</div>
+    <div class="page-desc">本部直下の施工代理店。取次店の開拓と施工の両方を担当します（目標10社 × 取次店300店）</div>
     <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのため簡略化しています（本番では登録フォームを表示）')">＋ 施工代理店を登録</button></div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>代理店名</th><th>担当者</th><th>対応エリア</th><th>状態</th><th>デモ施工</th><th>施工実績</th><th>消耗品購入額</th><th>契約日</th></tr></thead>
+        <thead><tr><th>代理店名</th><th>担当者</th><th>対応エリア</th><th>状態</th><th>デモ施工</th><th>開拓取次店</th><th>施工実績</th><th>消耗品購入額</th><th>契約日</th></tr></thead>
         <tbody>
           ${contractors.map(c => `
             <tr>
               <td><b>${c.name}</b></td><td>${c.contact}</td><td>${c.areas}</td><td>${stBadge(c.status)}</td>
               <td><span class="badge clickable ${c.demoStatus === "済" ? "b-green" : "b-orange"}" onclick="toggleDemoStatus(${c.id})">${c.demoStatus}</span></td>
+              <td><b>${shops.filter(s => s.contractorId === c.id).length}</b> / ${c.target} 店</td>
               <td>${serviceOrders.filter(o => o.contractorId === c.id && o.status === "施工完了").length} 件</td>
               <td>${yen(supplyOrders.filter(o => o.contractorId === c.id).reduce((s, o) => s + poAmount(o), 0))}</td>
               <td>${c.contractDate}</td>
@@ -703,14 +671,14 @@ function renderHqContract() {
   const el = $("page-hq-contract"); if (!el) return;
   el.innerHTML = `
     <div class="page-title">契約書管理</div>
-    <div class="page-desc">加盟店・取次店・施工代理店の契約書をアップロード・管理します</div>
+    <div class="page-desc">施工代理店・取次店の契約書をアップロード・管理します</div>
     <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのためアップロードは省略しています')">＋ 契約書をアップロード</button></div>
     <div class="card" style="padding:0">
       <table>
         <thead><tr><th>レイヤー</th><th>契約先</th><th>ファイル</th><th>アップロード日</th><th>加盟金</th><th>入金状況</th></tr></thead>
         <tbody>
           ${contracts.map(c => `
-            <tr><td><span class="badge ${c.layer === "加盟店" ? "b-purple" : c.layer === "取次店" ? "b-blue" : "b-green"}">${c.layer}</span></td>
+            <tr><td><span class="badge ${c.layer === "取次店" ? "b-blue" : "b-purple"}">${c.layer}</span></td>
             <td>${c.entity}</td><td><span class="link">📎 ${c.file}</span></td><td>${c.uploaded}</td>
             <td>${c.feeAmount != null ? yen(c.feeAmount) : "—"}</td>
             <td>${c.feePaid ? paidBadge(c.feePaid) : "—"}</td></tr>`).join("")}
@@ -720,36 +688,38 @@ function renderHqContract() {
 }
 
 // =====================================================
-// 加盟店
+// 施工代理店（取次店の開拓・管理）
 // =====================================================
-function myShops() { return shops.filter(s => s.franchiseId === session.entityId); }
+function myShops() { return shops.filter(s => s.contractorId === session.entityId); }
 
-function renderFcDash() {
-  const el = $("page-fc-dash"); if (!el) return;
-  const f = fcById(session.entityId);
+function renderOpDash() {
+  const el = $("page-op-dash"); if (!el) return;
+  const c = opById(session.entityId);
   const ms = myShops();
-  const orders = serviceOrders.filter(o => ms.some(s => s.id === o.shopId));
+  const shopOrders = serviceOrders.filter(o => ms.some(s => s.id === o.shopId));
+  const myJobs = serviceOrders.filter(o => o.contractorId === session.entityId);
+  const doneJobs = myJobs.filter(o => o.status === "施工完了");
   el.innerHTML = `
-    <div class="page-title">加盟店ダッシュボード</div>
-    <div class="page-desc">${f.name} — 自社が獲得した取次店と取次実績を確認できます（他の加盟店の情報は見えません）</div>
+    <div class="page-title">ダッシュボード</div>
+    <div class="page-desc">${c.name} — 自社が開拓した取次店と、担当した施工案件の状況を確認できます（他の施工代理店の情報は見えません）</div>
     <div class="cards-row">
-      <div class="card"><div class="stat-label">獲得取次店</div><div class="stat-value">${ms.length}<span style="font-size:14px"> 店</span></div><div class="stat-sub">目標 ${f.target} 店</div></div>
-      <div class="card"><div class="stat-label">稼働中</div><div class="stat-value">${ms.filter(s => s.status === "稼働中").length}<span style="font-size:14px"> 店</span></div><div class="stat-sub">準備中 ${ms.filter(s => s.status === "準備中").length} 店</div></div>
-      <div class="card"><div class="stat-label">配下取次店の取次件数</div><div class="stat-value">${orders.length}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工完了 ${orders.filter(o => o.status === "施工完了").length} 件</div></div>
+      <div class="card"><div class="stat-label">開拓した取次店</div><div class="stat-value">${ms.length}<span style="font-size:14px"> 店</span></div><div class="stat-sub">目標 ${c.target} 店 / 稼働中 ${ms.filter(s => s.status === "稼働中").length} 店</div></div>
+      <div class="card"><div class="stat-label">自社取次店からの取次</div><div class="stat-value">${shopOrders.length}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工完了 ${shopOrders.filter(o => o.status === "施工完了").length} 件</div></div>
+      <div class="card"><div class="stat-label">担当した施工案件</div><div class="stat-value">${myJobs.length}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工完了 ${doneJobs.length} 件</div></div>
     </div>
     <div class="card">
-      <div class="section-title" style="margin-top:0">配下取次店の最近の取次</div>
-      <table><thead><tr><th>受付日</th><th>取次店</th><th>車種</th><th>状況</th></tr></thead><tbody>
-        ${orders.slice(0, 6).map(o => `<tr><td>${o.date}</td><td>${shopById(o.shopId).name}</td><td>${o.car}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">取次はまだありません</td></tr>`}
+      <div class="section-title" style="margin-top:0">自社取次店の最近の取次</div>
+      <table><thead><tr><th>受付日</th><th>取次店</th><th>車種</th><th>金額</th><th>状況</th></tr></thead><tbody>
+        ${shopOrders.slice(0, 6).map(o => `<tr><td>${o.date}</td><td>${shopById(o.shopId).name}</td><td>${o.car}</td><td>${yen(o.amount)}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="5" style="color:var(--muted)">取次はまだありません</td></tr>`}
       </tbody></table>
     </div>`;
 }
 
-function renderFcShop() {
-  const el = $("page-fc-shop"); if (!el) return;
+function renderOpShop() {
+  const el = $("page-op-shop"); if (!el) return;
   el.innerHTML = `
     <div class="page-title">取次店管理</div>
-    <div class="page-desc">自社で獲得した取次店を登録・管理します。登録すると専用QRコードが発行されます</div>
+    <div class="page-desc">自社で開拓した取次店を登録・管理します。登録すると専用QRコードが発行されます</div>
     <div class="toolbar"><div></div><button class="btn btn-primary" onclick="openShopAddModal()">＋ 取次店を登録</button></div>
     <div class="card" style="padding:0">
       <table>
@@ -787,19 +757,19 @@ function saveShop() {
   const id = Math.max(...shops.map(s => s.id)) + 1;
   shops.push({
     id, code: "SHOP-" + String(id).padStart(4, "0"), name,
-    franchiseId: session.entityId, type: $("ns-type").value, contact: $("ns-contact").value,
+    contractorId: session.entityId, type: $("ns-type").value, contact: $("ns-contact").value,
     tel: $("ns-tel").value, region: $("ns-region").value || "未設定", status: "準備中", joined: TODAY,
   });
   closeModal(); renderAll(); showQr(id);
 }
 
-function renderFcContract() {
-  const el = $("page-fc-contract"); if (!el) return;
-  const f = fcById(session.entityId);
-  const mine = contracts.filter(c => c.entity === f.name || myShops().some(s => s.name === c.entity));
+function renderOpContract() {
+  const el = $("page-op-contract"); if (!el) return;
+  const c0 = opById(session.entityId);
+  const mine = contracts.filter(c => c.entity === c0.name || myShops().some(s => s.name === c.entity));
   el.innerHTML = `
     <div class="page-title">契約書</div>
-    <div class="page-desc">自社の加盟店契約と、自社配下の取次店の同意書を管理します</div>
+    <div class="page-desc">自社の施工代理店契約と、自社が開拓した取次店の同意書を管理します</div>
     <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのためアップロードは省略しています')">＋ 契約書をアップロード</button></div>
     <div class="card" style="padding:0">
       <table>
