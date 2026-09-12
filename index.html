@@ -631,11 +631,13 @@ function showSoDetail(soId) {
       <div class="detail-item"><div class="k">施工場所</div><div class="v">${o.customerPref}${o.customerCity}</div></div>
       <div class="detail-item"><div class="k">車種 / 区分</div><div class="v">${o.car} / ${o.carClass || "未判定"}${o.yani ? "（＋やにとり）" : ""}</div></div>
       <div class="detail-item"><div class="k">決済金額</div><div class="v">${yen(o.amount)} ${paymentBadge(o.payment)}</div></div>
-      ${(() => { const s = splitOf(o.amount); return s ? `
-      <div class="detail-item" style="grid-column:1/-1"><div class="k">この案件の配分</div><div class="v" style="font-size:13px">
+      ${(() => { const s = splitOf(o.amount); if (!s) return ""; const done = o.status === "施工完了"; return `
+      <div class="detail-item" style="grid-column:1/-1"><div class="k">この案件の配分${done ? "" : '（未確定・参考）'}</div><div class="v" style="font-size:13px">
+        ${done ? "" : '<span class="badge b-orange" style="margin-right:6px">施工完了前のため未確定</span>'}
         決済手数料 ${yen(s.fee)} ／ 取次店 ${yen(s.shop)} ／ 施工代理店 ${yen(s.contractor)} ／ 本部 ${yen(s.hq)}
         <span style="color:var(--muted)">（合計 ${yen(s.fee + s.shop + s.contractor + s.hq)}）</span>
-      </div></div>` : ""; })()}
+        ${done ? "" : '<div style="color:var(--muted);margin-top:4px">※ キャンセル・返金の可能性があるため、施工完了となるまで支払対象にはなりません。</div>'}
+      </div></div>`; })()}
       <div class="detail-item"><div class="k">希望日 / 確定日</div><div class="v">${o.desire} / ${o.scheduled || "未確定"}</div></div>
       <div class="detail-item"><div class="k">施工代理店</div><div class="v">${o.contractorId ? opById(o.contractorId).name : "未割り当て"}</div></div>
       <div class="detail-item" style="grid-column:1/-1"><div class="k">施工前確認</div>
@@ -758,30 +760,41 @@ let salesMonth = null;   // 売上管理で選択中の月（null = 全期間）
 let paymentMonth = null; // 支払管理で選択中の締め月
 
 function ordersInMonth(list, month) { return month ? list.filter(o => monthOf(o.date) === month) : list; }
+// キャンセル・返金の可能性があるため、施工代理店・取次店への支払は
+// 「施工完了」となった案件だけを対象にする（新規受付〜施工日確定の段階では未確定の売上として扱う）
+function completedOnly(list) { return list.filter(o => o.status === "施工完了"); }
+function notCompletedOnly(list) { return list.filter(o => o.status !== "施工完了"); }
 
 function renderHqSales() {
   const el = $("page-hq-sales"); if (!el) return;
   const months = availableMonths();
   if (salesMonth === null && months.length) salesMonth = months[0];
   const so = ordersInMonth(serviceOrders, salesMonth);
+  const soDone = completedOnly(so);
+  const soPending = notCompletedOnly(so);
   const po = ordersInMonth(supplyOrders, salesMonth);
-  const soTotal = so.reduce((s, o) => s + (o.amount || 0), 0);
+  const doneTotal = soDone.reduce((s, o) => s + (o.amount || 0), 0);
+  const pendingTotal = soPending.reduce((s, o) => s + (o.amount || 0), 0);
   const poTotal = po.reduce((s, o) => s + (poAmount(o) || 0), 0);
 
-  // 施工代理店ごと：施工を担当した売上と、消耗品の購入額
+  // 施工代理店ごと：施工完了分の売上（確定）と、未完了分（参考）、消耗品の購入額
   const opRows = contractors.map(c => {
-    const jobs = so.filter(o => o.contractorId === c.id);
-    const amount = jobs.reduce((s, o) => s + (o.amount || 0), 0);
+    const done = soDone.filter(o => o.contractorId === c.id);
+    const pending = soPending.filter(o => o.contractorId === c.id);
+    const amount = done.reduce((s, o) => s + (o.amount || 0), 0);
+    const pendingAmount = pending.reduce((s, o) => s + (o.amount || 0), 0);
     const supply = po.filter(o => o.contractorId === c.id).reduce((s, o) => s + (poAmount(o) || 0), 0);
-    return { name: c.name, count: jobs.length, amount, supply };
-  }).filter(r => r.count || r.supply).sort((a, b) => b.amount - a.amount);
+    return { name: c.name, count: done.length, amount, pendingCount: pending.length, pendingAmount, supply };
+  }).filter(r => r.count || r.pendingCount || r.supply).sort((a, b) => b.amount - a.amount);
 
-  // 取次店ごと：自店経由で入った施工の売上
+  // 取次店ごと：自店経由で入った施工完了分の売上（確定）と未完了分（参考）
   const shopRows = shops.map(s => {
-    const orders = so.filter(o => o.shopId === s.id);
-    const amount = orders.reduce((t, o) => t + (o.amount || 0), 0);
-    return { name: s.name, parent: opById(s.contractorId).name, count: orders.length, amount };
-  }).filter(r => r.count).sort((a, b) => b.amount - a.amount);
+    const done = soDone.filter(o => o.shopId === s.id);
+    const pending = soPending.filter(o => o.shopId === s.id);
+    const amount = done.reduce((t, o) => t + (o.amount || 0), 0);
+    const pendingAmount = pending.reduce((t, o) => t + (o.amount || 0), 0);
+    return { name: s.name, parent: opById(s.contractorId).name, count: done.length, amount, pendingCount: pending.length, pendingAmount };
+  }).filter(r => r.count || r.pendingCount).sort((a, b) => b.amount - a.amount);
 
   el.innerHTML = `
     <div class="page-title">売上管理</div>
@@ -796,34 +809,36 @@ function renderHqSales() {
       </div>
       <div></div>
     </div>
+    <div class="alert alert-info" style="font-size:12px">💡 キャンセル・返金の可能性があるため、施工売上は<b>「施工完了」となった案件のみ確定売上</b>として集計しています。施工中・確認中の案件は「未完了（参考）」として別に表示し、支払の対象にもしていません。</div>
     <div class="cards-row">
-      <div class="card"><div class="stat-label">施工売上</div><div class="stat-value">${yen(soTotal)}</div><div class="stat-sub">${so.length} 件</div></div>
+      <div class="card"><div class="stat-label">施工売上（施工完了・確定）</div><div class="stat-value">${yen(doneTotal)}</div><div class="stat-sub">${soDone.length} 件</div></div>
+      <div class="card"><div class="stat-label">施工中・未完了（参考）</div><div class="stat-value" style="color:var(--warning)">${yen(pendingTotal)}</div><div class="stat-sub">${soPending.length} 件・完了後に確定売上へ移る</div></div>
       <div class="card"><div class="stat-label">消耗品売上</div><div class="stat-value">${yen(poTotal)}</div><div class="stat-sub">${po.length} 件（送料込み）</div></div>
-      <div class="card"><div class="stat-label">売上合計</div><div class="stat-value" style="color:var(--primary-dark)">${yen(soTotal + poTotal)}</div><div class="stat-sub">施工＋消耗品</div></div>
-      <div class="card"><div class="stat-label">本部の取り分（施工分）</div><div class="stat-value">${yen(splitTotal(so).hq)}</div><div class="stat-sub">決済手数料を引いた額の ${(commissionSettings.hqRate * 100).toFixed(0)}%（端数を含む）</div></div>
+      <div class="card"><div class="stat-label">確定売上の合計</div><div class="stat-value" style="color:var(--primary-dark)">${yen(doneTotal + poTotal)}</div><div class="stat-sub">施工完了分＋消耗品</div></div>
     </div>
     <div class="card" style="padding:0;margin-bottom:18px">
       <table>
-        <thead><tr><th>施工代理店</th><th>施工件数</th><th>施工売上</th><th>消耗品購入額</th><th>合計</th></tr></thead>
+        <thead><tr><th>施工代理店</th><th>施工完了（確定）</th><th>施工中・未完了（参考）</th><th>消耗品購入額</th></tr></thead>
         <tbody>
-          ${opRows.map(r => `<tr><td><b>${r.name}</b></td><td>${r.count} 件</td><td>${yen(r.amount)}</td><td>${yen(r.supply)}</td><td><b>${yen(r.amount + r.supply)}</b></td></tr>`).join("") || `<tr><td colspan="5" style="color:var(--muted)">対象月の売上はありません</td></tr>`}
+          ${opRows.map(r => `<tr><td><b>${r.name}</b></td><td>${r.count} 件 / ${yen(r.amount)}</td><td style="color:var(--muted)">${r.pendingCount} 件 / ${yen(r.pendingAmount)}</td><td>${yen(r.supply)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対象月の売上はありません</td></tr>`}
         </tbody>
       </table>
     </div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>取次店</th><th>開拓した施工代理店</th><th>取次件数</th><th>施工売上</th></tr></thead>
+        <thead><tr><th>取次店</th><th>開拓した施工代理店</th><th>施工完了（確定）</th><th>施工中・未完了（参考）</th></tr></thead>
         <tbody>
-          ${shopRows.map(r => `<tr><td><b>${r.name}</b></td><td>${r.parent}</td><td>${r.count} 件</td><td>${yen(r.amount)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対象月の取次はありません</td></tr>`}
+          ${shopRows.map(r => `<tr><td><b>${r.name}</b></td><td>${r.parent}</td><td>${r.count} 件 / ${yen(r.amount)}</td><td style="color:var(--muted)">${r.pendingCount} 件 / ${yen(r.pendingAmount)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対象月の取次はありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
 }
 
 // 月次の支払明細（施工代理店・取次店ごとの配分額）を計算する。
+// キャンセル・返金の可能性があるため、支払の対象は「施工完了」の案件のみ。
 // 配分は案件ごとに計算してから合算する（決済手数料が1件ごとに発生するため）
 function payoutRows(month) {
-  const so = ordersInMonth(serviceOrders, month);
+  const so = completedOnly(ordersInMonth(serviceOrders, month));
   const rows = [];
   contractors.forEach(c => {
     const jobs = so.filter(o => o.contractorId === c.id);
@@ -844,12 +859,16 @@ function renderHqPayment() {
   if (paymentMonth === null && months.length) paymentMonth = months[0];
   const rows = payoutRows(paymentMonth);
   const total = rows.reduce((s, r) => s + r.payout, 0);
-  const t = splitTotal(ordersInMonth(serviceOrders, paymentMonth));
+  const t = splitTotal(completedOnly(ordersInMonth(serviceOrders, paymentMonth)));
   const soTotal = t.amount;
+  const pending = notCompletedOnly(ordersInMonth(serviceOrders, paymentMonth));
+  const pendingTotal = pending.reduce((s, o) => s + (o.amount || 0), 0);
 
   el.innerHTML = `
     <div class="page-title">支払管理</div>
     <div class="page-desc">月初から月末までで締めた1か月分の配分額です。振込用のCSVをダウンロードして銀行にアップロードします</div>
+    <div class="alert alert-info" style="font-size:12px">💡 キャンセル・返金の可能性があるため、支払の対象は<b>「施工完了」となった案件のみ</b>です。施工中・確認中の案件は今回の支払には含まれず、完了した月の支払に自動で反映されます。</div>
+    ${pending.length ? `<div class="alert alert-warn" style="font-size:12px">⏳ この月には施工完了前の案件が ${pending.length} 件（${yen(pendingTotal)}）あります。これらは完了するまで支払対象になりません。</div>` : ""}
     <div class="toolbar">
       <div>
         <label style="font-size:12px;color:var(--muted);font-weight:bold;margin-right:6px">締め月</label>
@@ -1217,35 +1236,36 @@ function renderOpJobs() {
   const el = $("page-op-jobs"); if (!el) return;
   const list = serviceOrders.filter(o => o.contractorId === session.entityId);
   const pending = list.filter(o => o.status === "施工店確認中");
-  const doneList = list.filter(o => o.status === "施工完了");
-  const tAll = splitTotal(list);
-  const totalAll = tAll.amount;
-  const totalDone = doneList.reduce((s, o) => s + (o.amount || 0), 0);
+  const doneList = completedOnly(list);
+  const notDoneList = notCompletedOnly(list);
+  const tDone = splitTotal(doneList);
+  const notDoneTotal = notDoneList.reduce((s, o) => s + (o.amount || 0), 0);
   const byShop = {};
   list.forEach(o => {
     const shop = shopById(o.shopId);
-    if (!byShop[shop.id]) byShop[shop.id] = { shop, orders: [] };
-    byShop[shop.id].orders.push(o);
+    if (!byShop[shop.id]) byShop[shop.id] = { shop, done: [], notDone: [] };
+    (o.status === "施工完了" ? byShop[shop.id].done : byShop[shop.id].notDone).push(o);
   });
   const shopRows = Object.values(byShop)
-    .map(r => ({ shop: r.shop, count: r.orders.length, ...splitTotal(r.orders) }))
+    .map(r => ({ shop: r.shop, count: r.done.length, notDoneCount: r.notDone.length, notDoneAmount: r.notDone.reduce((s, o) => s + (o.amount || 0), 0), ...splitTotal(r.done) }))
     .sort((a, b) => b.amount - a.amount);
 
   el.innerHTML = `
     <div class="page-title">施工案件</div>
     <div class="page-desc">本部から割り当てられた案件です。対応可否の回答と施工完了の報告を行います</div>
     ${pending.map(o => `<div class="alert alert-warn">⏳ <b>${o.id}</b>（${o.customerPref}${o.customerCity} / ${o.car} / 希望日 ${o.desire}）の対応可否を回答してください。</div>`).join("")}
+    <div class="alert alert-info" style="font-size:12px">💡 キャンセル・返金の可能性があるため、受取見込み額は<b>「施工完了」となった案件のみ</b>で計算しています。施工中・確認中の案件は完了後に反映されます。</div>
     <div class="cards-row">
-      <div class="card"><div class="stat-label">対応案件の合計金額</div><div class="stat-value">${yen(totalAll)}</div><div class="stat-sub">全${list.length}件（施工完了 ${doneList.length}件・${yen(totalDone)}）</div></div>
-      <div class="card"><div class="stat-label">受取見込み額</div><div class="stat-value" style="color:var(--primary-dark)">${yen(tAll.contractor)}</div><div class="stat-sub">決済手数料 ${yen(tAll.fee)} を引いた額の ${(commissionSettings.contractorRate * 100).toFixed(0)}%${commissionSettings.paymentFeeConfirmed ? "" : "<br>※ 手数料率は決済代行会社が決まるまで仮の値です"}</div></div>
+      <div class="card"><div class="stat-label">施工完了分の合計金額</div><div class="stat-value">${yen(tDone.amount)}</div><div class="stat-sub">${doneList.length}件（施工中・未完了 ${notDoneList.length}件・${yen(notDoneTotal)}は含まず）</div></div>
+      <div class="card"><div class="stat-label">受取見込み額</div><div class="stat-value" style="color:var(--primary-dark)">${yen(tDone.contractor)}</div><div class="stat-sub">決済手数料 ${yen(tDone.fee)} を引いた額の ${(commissionSettings.contractorRate * 100).toFixed(0)}%${commissionSettings.paymentFeeConfirmed ? "" : "<br>※ 手数料率は決済代行会社が決まるまで仮の値です"}</div></div>
       <div class="card" style="grid-column:span 2">
         <div class="stat-label" style="margin-bottom:8px">取次店ごとの内訳（参考）</div>
-        <table style="font-size:12px"><thead><tr><th>取次店</th><th>件数</th><th>金額</th><th>受取見込み</th></tr></thead><tbody>
-          ${shopRows.map(r => `<tr><td>${r.shop.name}</td><td>${r.count}件</td><td>${yen(r.amount)}</td><td>${yen(r.contractor)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対応案件はありません</td></tr>`}
+        <table style="font-size:12px"><thead><tr><th>取次店</th><th>施工完了</th><th>受取見込み</th><th>施工中・未完了</th></tr></thead><tbody>
+          ${shopRows.map(r => `<tr><td>${r.shop.name}</td><td>${r.count}件 / ${yen(r.amount)}</td><td>${yen(r.contractor)}</td><td style="color:var(--muted)">${r.notDoneCount}件 / ${yen(r.notDoneAmount)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対応案件はありません</td></tr>`}
         </tbody></table>
       </div>
     </div>
-    <div class="alert alert-info" style="font-size:12px">※ 「金額」はお客さまからお預かりした施工料金（税込）です。「受取見込み額」は、そこから決済代行会社の手数料（現在 ${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "・仮"}）を引いた金額の ${(commissionSettings.contractorRate * 100).toFixed(0)}%（本部${(commissionSettings.hqRate * 100).toFixed(0)}%／取次店${(commissionSettings.shopRate * 100).toFixed(0)}%／施工代理店${(commissionSettings.contractorRate * 100).toFixed(0)}%）です。お支払いは月末締めの翌月払いです。</div>
+    <div class="alert alert-info" style="font-size:12px">※ 「金額」はお客さまからお預かりした施工料金（税込）です。「受取見込み額」は、そこから決済代行会社の手数料（現在 ${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "・仮"}）を引いた金額の ${(commissionSettings.contractorRate * 100).toFixed(0)}%（本部${(commissionSettings.hqRate * 100).toFixed(0)}%／取次店${(commissionSettings.shopRate * 100).toFixed(0)}%／施工代理店${(commissionSettings.contractorRate * 100).toFixed(0)}%）です。お支払いは施工完了の月を月末締めの翌月払いです。</div>
     <div class="card" style="padding:0">
       <table>
         <thead><tr><th>案件番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>施工場所</th><th>車種 / 区分</th><th>金額</th><th>受取見込み</th><th>希望日</th><th>確定日</th><th>状況</th><th>操作</th></tr></thead>
