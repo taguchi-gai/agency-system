@@ -1853,7 +1853,8 @@ function renderOpJobs() {
     (o.status === "施工完了" ? byShop[shop.id].done : byShop[shop.id].notDone).push(o);
   });
   const shopRows = Object.values(byShop)
-    .map(r => ({ shop: r.shop, count: r.done.length, notDoneCount: r.notDone.length, notDoneAmount: r.notDone.reduce((s, o) => s + (o.amount || 0), 0), ...splitTotal(r.done) }))
+    // splitTotal の戻り値にも取次店配分の `shop`（数値）があるため、取次店オブジェクトは別名で持つ
+    .map(r => ({ ...splitTotal(r.done), shopEntity: r.shop, count: r.done.length, notDoneCount: r.notDone.length, notDoneAmount: r.notDone.reduce((s, o) => s + (o.amount || 0), 0) }))
     .sort((a, b) => b.amount - a.amount);
 
   el.innerHTML = `
@@ -1867,7 +1868,7 @@ function renderOpJobs() {
       <div class="card" style="grid-column:span 2">
         <div class="stat-label" style="margin-bottom:8px">取次店ごとの内訳（参考）</div>
         <table style="font-size:12px"><thead><tr><th>取次店</th><th>施工完了</th><th>受取見込み</th><th>施工中・未完了</th></tr></thead><tbody>
-          ${shopRows.map(r => `<tr><td>${r.shop.name}</td><td>${r.count}件 / ${yen(r.amount)}</td><td>${yen(r.contractor)}</td><td style="color:var(--muted)">${r.notDoneCount}件 / ${yen(r.notDoneAmount)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対応案件はありません</td></tr>`}
+          ${shopRows.map(r => `<tr><td>${r.shopEntity.name}</td><td>${r.count}件 / ${yen(r.amount)}</td><td>${yen(r.contractor)}</td><td style="color:var(--muted)">${r.notDoneCount}件 / ${yen(r.notDoneAmount)}</td></tr>`).join("") || `<tr><td colspan="4" style="color:var(--muted)">対応案件はありません</td></tr>`}
         </tbody></table>
       </div>
     </div>
