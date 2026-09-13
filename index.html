@@ -489,6 +489,7 @@ const NAVS = {
     { id: "hq-op", icon: "🧰", label: "施工代理店管理" },
     { id: "hq-shop", icon: "🚙", label: "取次店管理" },
     { id: "hq-contract", icon: "📄", label: "契約書管理" },
+    { id: "hq-cars", icon: "🚗", label: "車種辞書" },
   ],
   op: [
     { id: "op-dash", icon: "📊", label: "ダッシュボード" },
@@ -531,7 +532,7 @@ function buildUI() {
 }
 
 function renderAll() {
-  if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqSales(); renderHqPayment(); renderHqInvoice(); renderHqOp(); renderHqShop(); renderHqContract(); }
+  if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqSales(); renderHqPayment(); renderHqInvoice(); renderHqOp(); renderHqShop(); renderHqContract(); renderHqCars(); }
   if (session.role === "shop") { renderShopForm(); renderShopOrders(); }
   if (session.role === "op") { renderOpDash(); renderOpJobs(); renderOpShop(); renderOpPo(); renderOpContract(); }
 }
@@ -738,24 +739,42 @@ function renderHqPo() {
       </table>
     </div>
     <div class="section-title">施工代理店からの注文</div>
-    <div class="card" style="padding:0">
-      <table>
-        <thead><tr><th>注文番号</th><th>注文日</th><th>施工代理店</th><th>商品</th><th>数量</th><th>商品代</th><th>送料</th><th>合計</th><th>入金</th><th>状況</th><th>請求書</th><th>操作</th></tr></thead>
-        <tbody>
-          ${supplyOrders.map(o => `
-            <tr>
-              <td><b>${o.id}</b></td><td>${o.date}</td><td>${opById(o.contractorId).name}</td>
-              <td>${prodById(o.productId).name}</td><td>${o.qty}</td>
-              <td>${yen(poSubtotal(o))}</td>
-              <td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td>
-              <td><b>${yen(poAmount(o))}</b></td>
-              <td>${paidBadge(o.paid)}</td><td>${poBadge(o.status)}</td>
-              <td>${invoiceCellHtml(o)}</td>
-              <td>${o.status === "受注" ? `<button class="btn btn-primary btn-sm" onclick="shipPo('${o.id}')">出荷済にする</button>` : "—"}</td>
-            </tr>`).join("")}
-        </tbody>
-      </table>
-    </div>`;
+    ${(() => {
+      const K = "hqpo", R = "renderHqPo";
+      const G = { id: o => o.id, date: o => o.date, month: o => monthOf(o.date), op: o => opById(o.contractorId).name, product: o => prodById(o.productId).name, qty: o => o.qty, total: o => poAmount(o) || 0, paid: o => o.paid, status: o => o.status, invoice: o => o.invoiceId ? (invoiceById(o.invoiceId) || {}).status || "作成済み" : "未作成" };
+      const months = [...new Set(supplyOrders.map(G.month))].sort().reverse();
+      const rows = applyTable(K, supplyOrders, G);
+      return `
+      <div class="filters">
+        ${filterSelect(K, "paid", "入金", ["未入金", "入金済"], R)}
+        ${filterSelect(K, "status", "状況", ["受注", "出荷済"], R)}
+        ${filterSelect(K, "invoice", "請求書", ["未作成", ...INVOICE_STATUS], R)}
+        ${filterSelect(K, "month", "注文月", months.map(m => ({ value: m, label: monthLabel(m) })), R)}
+        ${filterSelect(K, "op", "施工代理店", [...new Set(supplyOrders.map(G.op))].sort(), R)}
+        ${filterSummary(K, R, rows.length, supplyOrders.length)}
+      </div>
+      <div class="card" style="padding:0">
+        <table>
+          <thead><tr>${thSort(K, "id", "注文番号", R)}${thSort(K, "date", "注文日", R)}${thSort(K, "op", "施工代理店", R)}${thSort(K, "product", "商品", R)}${thSort(K, "qty", "数量", R)}<th>商品代</th><th>送料</th>${thSort(K, "total", "合計", R)}${thSort(K, "paid", "入金", R)}${thSort(K, "status", "状況", R)}${thSort(K, "invoice", "請求書", R)}<th>操作</th></tr></thead>
+          <tbody>
+            ${rows.map(o => `
+              <tr>
+                <td><b>${o.id}</b></td><td>${o.date}</td><td>${opById(o.contractorId).name}</td>
+                <td>${prodById(o.productId).name}</td><td>${o.qty}</td>
+                <td>${yen(poSubtotal(o))}</td>
+                <td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td>
+                <td><b>${yen(poAmount(o))}</b></td>
+                <td>${paidBadge(o.paid)}</td><td>${poBadge(o.status)}</td>
+                <td>${invoiceCellHtml(o)}</td>
+                <td style="white-space:nowrap">
+                  ${o.status === "受注" ? `<button class="btn btn-primary btn-sm" onclick="shipPo('${o.id}')">出荷済にする</button>` : ""}
+                  ${o.paid !== "入金済" ? `<button class="btn btn-success btn-sm" onclick="markPoPaid('${o.id}')">入金済にする</button>` : ""}
+                  ${o.status !== "受注" && o.paid === "入金済" ? "—" : ""}
+                </td>
+              </tr>`).join("") || `<tr><td colspan="12" style="color:var(--muted)">条件に合う注文がありません</td></tr>`}
+          </tbody>
+        </table>
+      </div>`; })()}`;
 }
 function shipPo(poId) {
   const o = supplyOrders.find(x => x.id === poId);
@@ -1187,7 +1206,7 @@ function renderHqInvoice() {
   el.innerHTML = `
     <div class="page-title">請求書管理</div>
     <div class="page-desc">作成済みの請求書を確認・修正し、送付と入金を記録します（表示金額はすべて税込）</div>
-    <div class="alert alert-info" style="font-size:12px">🧾 請求書の作成は<b>「消耗品受発注」画面の各注文の行</b>から行います（この画面では作成しません）。作成した請求書は「作成済み」→ 相手に送ったら「送付済み」→ 入金を確認したら「入金済」と進めます。</div>
+    <div class="alert alert-info" style="font-size:12px">🧾 請求書の作成はこの画面では行いません。<b>消耗品の請求書は「消耗品受発注」画面の各注文の行</b>から、<b>加盟金の請求書は「契約書管理」画面の各契約の行</b>から作成します。作成した請求書は「作成済み」→ 相手に送ったら「送付済み」→ 入金を確認したら「入金済」と進めます。</div>
     ${unsent ? `<div class="alert alert-warn" style="font-size:12px">⚠ 作成済みでまだ送付していない請求書が ${unsent} 件あります。内容を確認して「送付済みにする」を押してください。</div>` : ""}
     ${unbilled ? `<div class="alert alert-info" style="font-size:12px">📌 請求書が未作成の消耗品注文が ${unbilled} 件あります（消耗品受発注画面で作成できます）。</div>` : ""}
     <div class="alert alert-info" style="font-size:12px">📄 請求書のフォーマットと管理番号のルールは本部から受領次第差し替えます（現在は仮：番号 INV-年月-連番、支払期限 発行日＋30日）。</div>
@@ -1446,22 +1465,118 @@ function toggleDemoStatus(id) {
 
 function renderHqContract() {
   const el = $("page-hq-contract"); if (!el) return;
+  const K = "hqct", R = "renderHqContract";
+  const G = { layer: c => c.layer, entity: c => c.entity, uploaded: c => c.uploaded, month: c => monthOf(c.uploaded), fee: c => c.feeAmount || 0, paid: c => c.feePaid || "対象外", invoice: c => c.feeInvoiceId ? (invoiceById(c.feeInvoiceId) || {}).status || "作成済み" : (c.feeAmount != null ? "未作成" : "対象外") };
+  const months = [...new Set(contracts.map(G.month))].sort().reverse();
+  const rows = applyTable(K, contracts, G);
+  const unpaid = contracts.filter(c => c.feePaid === "未入金");
   el.innerHTML = `
     <div class="page-title">契約書管理</div>
-    <div class="page-desc">施工代理店・取次店の契約書をアップロード・管理します</div>
+    <div class="page-desc">施工代理店・取次店の契約書をアップロード・管理します。<b>加盟金の請求書はこの画面から作成</b>し、入金もここで記録します</div>
+    ${unpaid.length ? `<div class="alert alert-warn" style="font-size:12px">💴 加盟金が未入金の施工代理店が ${unpaid.length} 件あります（${unpaid.map(c => c.entity).join("、")}）。${unpaid.some(c => !c.feeInvoiceId) ? "請求書が未作成のものは「加盟金の請求書を作成」から作成してください。" : ""}</div>` : ""}
     <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのためアップロードは省略しています')">＋ 契約書をアップロード</button></div>
+    <div class="filters">
+      ${filterSelect(K, "layer", "レイヤー", ["施工代理店", "取次店"], R)}
+      ${filterSelect(K, "month", "アップロード月", months.map(m => ({ value: m, label: monthLabel(m) })), R)}
+      ${filterSelect(K, "paid", "入金状況", ["未入金", "入金済", "対象外"], R)}
+      ${filterSelect(K, "invoice", "加盟金請求書", ["未作成", ...INVOICE_STATUS, "対象外"], R)}
+      ${filterSummary(K, R, rows.length, contracts.length)}
+    </div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>レイヤー</th><th>契約先</th><th>ファイル</th><th>アップロード日</th><th>加盟金</th><th>入金状況</th></tr></thead>
+        <thead><tr>${thSort(K, "layer", "レイヤー", R)}${thSort(K, "entity", "契約先", R)}<th>ファイル</th>${thSort(K, "uploaded", "アップロード日", R)}${thSort(K, "fee", "加盟金", R)}${thSort(K, "paid", "入金状況", R)}${thSort(K, "invoice", "加盟金請求書", R)}<th>操作</th></tr></thead>
         <tbody>
-          ${contracts.map(c => `
+          ${rows.map(c => {
+            const inv = c.feeInvoiceId ? invoiceById(c.feeInvoiceId) : null;
+            return `
             <tr><td><span class="badge ${c.layer === "取次店" ? "b-blue" : "b-purple"}">${c.layer}</span></td>
             <td>${c.entity}</td><td><span class="link">📎 ${c.file}</span></td><td>${c.uploaded}</td>
             <td>${c.feeAmount != null ? yen(c.feeAmount) : "—"}</td>
-            <td>${c.feePaid ? paidBadge(c.feePaid) : "—"}</td></tr>`).join("")}
+            <td>${c.feePaid ? paidBadge(c.feePaid) : "<span style='color:var(--muted)'>対象外</span>"}</td>
+            <td>${inv ? `<span class="link" onclick="openInvoicePreview('${inv.id}')">${inv.id}</span> ${invBadge(inv.status)}` : (c.feeAmount != null ? '<span class="badge b-gray">未作成</span>' : "—")}</td>
+            <td style="white-space:nowrap">
+              ${c.feeAmount != null && !inv ? `<button class="btn btn-primary btn-sm" onclick="createFeeInvoice(${c.id})">加盟金の請求書を作成</button>` : ""}
+              ${inv ? `<button class="btn btn-ghost btn-sm" onclick="openInvoicePreview('${inv.id}')">請求書</button>` : ""}
+              ${c.feePaid === "未入金" ? `<button class="btn btn-success btn-sm" onclick="markContractPaid(${c.id})">入金済にする</button>` : ""}
+              ${c.feeAmount == null ? "—" : ""}
+            </td></tr>`; }).join("") || `<tr><td colspan="8" style="color:var(--muted)">条件に合う契約書がありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
+}
+
+// =====================================================
+// 本部：車種辞書（手入力での追加）
+// =====================================================
+function renderHqCars() {
+  const el = $("page-hq-cars"); if (!el) return;
+  const K = "hqcars", R = "renderHqCars";
+  const all = [...CAR_DICTIONARY_USER.map((e, i) => ({ ...e, _src: "手入力", _idx: i })), ...CAR_DICTIONARY.map(e => ({ ...e, _src: "標準" }))];
+  const q = (ts(K).filters.q || "").trim();
+  const nq = q ? normalizeCarName(q) : "";
+  const G = { src: e => e._src, carClass: e => e.carClass, maker: e => e.maker, model: e => e.model };
+  let rows = applyTable(K, all, G);
+  if (nq) rows = rows.filter(e => normalizeCarName(e.maker + e.model).includes(nq) || e.keywords.some(k => normalizeCarName(k).includes(nq)));
+  const test = ts(K).filters.test || "";
+  const judged = test ? judgeCarClass(test) : null;
+  el.innerHTML = `
+    <div class="page-title">車種辞書</div>
+    <div class="page-desc">取次店が入力した車種名から施工区分（軽／普通／ワンボックス）を自動判定するための辞書です。標準辞書に無い車種はここから手入力で追加できます</div>
+    <div class="alert alert-info" style="font-size:12px">💡 手入力で追加した車種は標準辞書より優先して判定されます。判定結果を変えたいときは、同じ車種名を望む区分で追加してください（モックではこのブラウザ内にのみ保存されます）。</div>
+    <div class="cards-row">
+      <div class="card">
+        <div class="section-title" style="margin-top:0">車種を追加</div>
+        <div class="form-grid">
+          <div class="form-group"><label>メーカー</label><input type="text" id="cd-maker" placeholder="例）トヨタ"></div>
+          <div class="form-group"><label>車種名</label><input type="text" id="cd-model" placeholder="例）ランドクルーザー250"></div>
+          <div class="form-group full"><label>判定キーワード（読み替え・型式など、カンマ区切り）</label><input type="text" id="cd-keywords" placeholder="例）ランクル250, LC250"></div>
+          <div class="form-group"><label>施工区分</label><select id="cd-class">${Object.keys(CAR_CLASS_PRICE).map(c => `<option value="${c}">${c}（${yen(CAR_CLASS_PRICE[c])}）</option>`).join("")}</select></div>
+          <div class="form-group"><label>備考</label><input type="text" id="cd-note" placeholder="例）本部確認済み"></div>
+        </div>
+        <div style="margin-top:8px"><button class="btn btn-primary" onclick="addCarFromForm()">＋ 辞書に追加</button></div>
+      </div>
+      <div class="card">
+        <div class="section-title" style="margin-top:0">判定テスト</div>
+        <div class="form-group"><label>取次店が入力しそうな車種名</label><input type="text" value="${test.replace(/"/g, "&quot;")}" placeholder="例）ハイエース" onchange="setFilter('${K}','test',this.value,'${R}')"></div>
+        <div class="price-box" style="margin-top:8px">${test ? (judged ? `<div class="price-row"><span>判定</span><span><b>${judged.carClass}</b>　${yen(judged.price)}</span></div><div class="price-row" style="font-size:12px;color:var(--muted)"><span>一致した辞書</span><span>${judged.entry.maker} ${judged.entry.model}${judged.entry.user ? "（手入力）" : "（標準）"}</span></div>` : `<div class="price-row"><span>判定</span><span style="color:var(--danger)">辞書に無い車種です（取次店画面では手動選択になります）</span></div>`) : `<div style="font-size:12px;color:var(--muted)">車種名を入力して Enter を押すと判定結果を表示します</div>`}</div>
+      </div>
+    </div>
+    <div class="filters">
+      ${filterSelect(K, "src", "登録元", ["手入力", "標準"], R)}
+      ${filterSelect(K, "carClass", "区分", Object.keys(CAR_CLASS_PRICE), R)}
+      <label class="flt"><span>検索</span><input type="text" value="${q.replace(/"/g, "&quot;")}" placeholder="メーカー・車種・キーワード" onchange="setFilter('${K}','q',this.value,'${R}')"></label>
+      ${filterSummary(K, R, rows.length, all.length)}
+    </div>
+    <div class="card" style="padding:0">
+      <table>
+        <thead><tr>${thSort(K, "src", "登録元", R)}${thSort(K, "maker", "メーカー", R)}${thSort(K, "model", "車種", R)}<th>判定キーワード</th>${thSort(K, "carClass", "区分", R)}<th>備考</th><th>操作</th></tr></thead>
+        <tbody>
+          ${rows.slice(0, 300).map(e => `
+            <tr>
+              <td><span class="badge ${e._src === "手入力" ? "b-orange" : "b-gray"}">${e._src}</span></td>
+              <td>${e.maker}</td><td>${e.model}</td>
+              <td style="font-size:12px;color:var(--muted)">${e.keywords.join("、")}</td>
+              <td><span class="badge ${e.carClass === "軽" ? "b-green" : e.carClass === "普通" ? "b-blue" : "b-purple"}">${e.carClass}</span></td>
+              <td style="font-size:12px;color:var(--muted)">${e.note || ""}${e.addedAt ? `<br>${e.addedAt} 追加` : ""}</td>
+              <td>${e._src === "手入力" ? `<button class="btn btn-ghost btn-sm" onclick="removeCarFromList(${e._idx})">削除</button>` : "—"}</td>
+            </tr>`).join("") || `<tr><td colspan="7" style="color:var(--muted)">条件に合う車種がありません</td></tr>`}
+          ${rows.length > 300 ? `<tr><td colspan="7" style="color:var(--muted)">…ほか ${rows.length - 300} 件（検索で絞り込んでください）</td></tr>` : ""}
+        </tbody>
+      </table>
+    </div>`;
+}
+function addCarFromForm() {
+  const maker = $("cd-maker").value.trim(), model = $("cd-model").value.trim();
+  const keywords = [model, ...$("cd-keywords").value.split(/[,、，\n]/).map(k => k.trim())].filter(k => k);
+  if (!model) { alert("車種名を入力してください"); return; }
+  addCarDictEntry({ maker: maker || "（未設定）", model, keywords: [...new Set(keywords)], carClass: $("cd-class").value, note: $("cd-note").value.trim() });
+  renderAll();
+  alert(`「${model}」を ${$("cd-class").value} として追加しました`);
+}
+function removeCarFromList(i) {
+  const e = CAR_DICTIONARY_USER[i];
+  if (!confirm(`「${e.maker} ${e.model}」を辞書から削除しますか？`)) return;
+  removeCarDictEntry(i); renderAll();
 }
 
 // =====================================================
