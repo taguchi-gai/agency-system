@@ -139,6 +139,14 @@
   .two-col { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: start; }
   @media (max-width: 1000px) { .two-col { grid-template-columns: 1fr; } }
 
+  /* ===== 一覧の絞り込み・並べ替え ===== */
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .flt { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); font-weight: bold; }
+  .flt select, .flt input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: #fff; font-family: inherit; }
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable:hover { color: var(--primary); }
+  th.sortable .sort-arrow { font-size: 10px; margin-left: 4px; color: var(--muted); }
+
   /* ===== 請求書（プレビュー・印刷） ===== */
   .invoice-doc { background: #fff; color: #222; padding: 28px 32px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; line-height: 1.6; }
   .invoice-doc h1 { font-size: 22px; letter-spacing: .3em; text-align: center; margin: 0 0 18px; }
@@ -841,6 +849,39 @@ function mockQrSvg(seed) {
 }
 
 // =====================================================
+// 一覧の絞り込み・並べ替え（本部の各画面で共通）
+// =====================================================
+const tableState = {}; // 画面キー → { sortKey, sortDir, filters }
+function ts(key) { return tableState[key] = tableState[key] || { sortKey: null, sortDir: 1, filters: {} }; }
+function setSort(key, col, render) { const s = ts(key); if (s.sortKey === col) s.sortDir *= -1; else { s.sortKey = col; s.sortDir = 1; } window[render](); }
+function setFilter(key, name, value, render) { ts(key).filters[name] = value; window[render](); }
+function clearFilters(key, render) { ts(key).filters = {}; ts(key).sortKey = null; window[render](); }
+function thSort(key, col, label, render) {
+  const s = ts(key);
+  return `<th class="sortable" onclick="setSort('${key}','${col}','${render}')">${label}<span class="sort-arrow">${s.sortKey === col ? (s.sortDir === 1 ? "▲" : "▼") : "⇅"}</span></th>`;
+}
+// options は文字列か {value,label}
+function filterSelect(key, name, label, options, render) {
+  const v = ts(key).filters[name] || "";
+  const opts = options.map(o => typeof o === "string" ? { value: o, label: o } : o);
+  return `<label class="flt"><span>${label}</span><select onchange="setFilter('${key}','${name}',this.value,'${render}')"><option value="">すべて</option>${opts.map(o => `<option value="${o.value}" ${o.value === v ? "selected" : ""}>${o.label}</option>`).join("")}</select></label>`;
+}
+function filterSummary(key, render, shown, total) {
+  return `<button class="btn btn-ghost btn-sm" onclick="clearFilters('${key}','${render}')">条件をクリア</button><span style="font-size:12px;color:var(--muted)">${shown} / ${total} 件</span>`;
+}
+// getters: { 列キー: 行 → 比較・絞り込みに使う値 }
+function applyTable(key, rows, getters) {
+  const s = ts(key);
+  let out = rows.filter(r => Object.entries(s.filters).every(([n, v]) => !v || !getters[n] || String(getters[n](r)) === v));
+  if (s.sortKey && getters[s.sortKey]) {
+    const g = getters[s.sortKey];
+    out = [...out].sort((a, b) => { const x = g(a), y = g(b); return (x > y ? 1 : x < y ? -1 : 0) * s.sortDir; });
+  }
+  return out;
+}
+function monthLabel(m) { return m ? m.replace("-", "年") + "月" : ""; }
+
+// =====================================================
 // 本部：売上管理・支払管理
 // =====================================================
 // 支払いは月初から月末までで締める。'YYYY-MM' を扱う。
@@ -1091,13 +1132,17 @@ const TAX_RATE = 0.10;                 // 表示金額は税込のため、請�
 const INVOICE_STATUS = ["作成済み", "送付済み", "入金済"];
 // { id, date, dueDate, payeeType: "施工代理店"|"取次店", payeeId, lines:[{productId, qty, unitPrice}], shipping, note, status, sentAt, orderIds }
 // サンプル：過去に作成・送付・入金済みになった請求書（元注文と紐づく）
+// kind: "消耗品"（消耗品注文から作成）| "加盟金"（契約書管理から作成。contractId で契約書と紐づく）
 let invoices = [
-  { id: "INV-202606-001", date: "2026-06-06", dueDate: "2026-07-06", payeeType: "施工代理店", payeeId: 3, lines: [{ productId: 1, qty: 12, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0004（2026-06-05）分", status: "入金済", sentAt: "2026-06-06", orderIds: ["PO-0004"] },
-  { id: "INV-202605-002", date: "2026-05-23", dueDate: "2026-06-22", payeeType: "施工代理店", payeeId: 2, lines: [{ productId: 1, qty: 10, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0003（2026-05-22）分", status: "入金済", sentAt: "2026-05-23", orderIds: ["PO-0003"] },
-  { id: "INV-202605-001", date: "2026-05-16", dueDate: "2026-06-15", payeeType: "施工代理店", payeeId: 1, lines: [{ productId: 1, qty: 20, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0002（2026-05-15）分", status: "送付済み", sentAt: "2026-05-16", orderIds: ["PO-0002"] },
+  { id: "INV-202606-001", kind: "消耗品", date: "2026-06-06", dueDate: "2026-07-06", payeeType: "施工代理店", payeeId: 3, lines: [{ productId: 1, qty: 12, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0004（2026-06-05）分", status: "入金済", sentAt: "2026-06-06", orderIds: ["PO-0004"] },
+  { id: "INV-202605-002", kind: "消耗品", date: "2026-05-23", dueDate: "2026-06-22", payeeType: "施工代理店", payeeId: 2, lines: [{ productId: 1, qty: 10, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0003（2026-05-22）分", status: "入金済", sentAt: "2026-05-23", orderIds: ["PO-0003"] },
+  { id: "INV-202605-001", kind: "消耗品", date: "2026-05-16", dueDate: "2026-06-15", payeeType: "施工代理店", payeeId: 1, lines: [{ productId: 1, qty: 20, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0002（2026-05-15）分", status: "送付済み", sentAt: "2026-05-16", orderIds: ["PO-0002"] },
+  { id: "INV-202604-001", kind: "加盟金", date: "2026-04-02", dueDate: "2026-05-02", payeeType: "施工代理店", payeeId: 3, lines: [{ productId: null, name: "加盟金（施工代理店契約）", qty: 1, unitPrice: 1100000 }], shipping: 0, note: "施工代理店契約（施工代理店契約書_関西施工サービス.pdf）に基づく加盟金", status: "送付済み", sentAt: "2026-04-02", orderIds: [], contractId: 3 },
 ];
-invoices.forEach(inv => inv.orderIds.forEach(oid => { const o = supplyOrders.find(x => x.id === oid); if (o) o.invoiceId = inv.id; }));
-let invoiceFilter = "all"; // 請求書管理の絞り込み（all / 作成済み / 送付済み / 入金済）
+invoices.forEach(inv => {
+  inv.orderIds.forEach(oid => { const o = supplyOrders.find(x => x.id === oid); if (o) o.invoiceId = inv.id; });
+  if (inv.contractId) { const c = contracts.find(x => x.id === inv.contractId); if (c) c.feeInvoiceId = inv.id; }
+});
 let editingInvoice = null;
 
 function addDays(dateStr, days) { const d = new Date(dateStr + "T00:00:00"); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
@@ -1108,6 +1153,10 @@ function invoiceSubtotal(inv) { return inv.lines.reduce((s, l) => s + (Number(l.
 function invoiceTotal(inv) { return invoiceSubtotal(inv) + (Number(inv.shipping) || 0); }
 function invoiceTax(inv) { const t = invoiceTotal(inv); return t - Math.round(t / (1 + TAX_RATE)); }
 function invoiceById(id) { return invoices.find(i => i.id === id); }
+// 明細行の表示名・単位。消耗品は商品マスタから、加盟金などは行に持つ名前をそのまま使う
+function lineName(l) { if (l.productId) { const p = prodById(l.productId); return p ? p.name : "—"; } return l.name || "—"; }
+function lineUnit(l) { if (l.productId) { const p = prodById(l.productId); return p ? p.unit : ""; } return "式"; }
+function kindBadge(k) { return `<span class="badge ${k === "加盟金" ? "b-purple" : "b-gray"}">${k || "消耗品"}</span>`; }
 function invBadge(s) { return `<span class="badge ${s === "入金済" ? "b-green" : s === "送付済み" ? "b-blue" : "b-orange"}">${s}</span>`; }
 // 消耗品注文の行に出す「請求書」欄。未作成／作成済み（未送付）／送付済み／入金済 がひと目で分かるようにする
 function invoiceCellHtml(o) {
@@ -1122,7 +1171,7 @@ function createInvoiceFromOrder(poId) {
   if (o.invoiceId) { openInvoiceEditor(o.invoiceId); return; }
   const p = prodById(o.productId);
   const inv = {
-    id: nextInvoiceNumber(TODAY), date: TODAY, dueDate: addDays(TODAY, 30),
+    id: nextInvoiceNumber(TODAY), kind: "消耗品", date: TODAY, dueDate: addDays(TODAY, 30),
     payeeType: "施工代理店", payeeId: o.contractorId,
     lines: [{ productId: p.id, qty: o.qty, unitPrice: p.price }],
     shipping: shippingFee(p.price * o.qty), note: `消耗品注文 ${o.id}（${o.date}）分`, status: "作成済み", sentAt: null, orderIds: [o.id],
@@ -1143,32 +1192,39 @@ function renderHqInvoice() {
     ${unbilled ? `<div class="alert alert-info" style="font-size:12px">📌 請求書が未作成の消耗品注文が ${unbilled} 件あります（消耗品受発注画面で作成できます）。</div>` : ""}
     <div class="alert alert-info" style="font-size:12px">📄 請求書のフォーマットと管理番号のルールは本部から受領次第差し替えます（現在は仮：番号 INV-年月-連番、支払期限 発行日＋30日）。</div>
     ${(() => {
-      const count = s => invoices.filter(i => i.status === s).length;
-      const tab = (key, label, n) => `<button class="btn btn-sm ${invoiceFilter === key ? "btn-primary" : "btn-ghost"}" onclick="invoiceFilter='${key}'; renderHqInvoice()">${label}（${n}）</button>`;
-      return `<div class="toolbar"><div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${tab("all", "すべて", invoices.length)} ${tab("作成済み", "作成済み・未送付", count("作成済み"))} ${tab("送付済み", "送付済み・入金待ち", count("送付済み"))} ${tab("入金済", "入金済", count("入金済"))}
-      </div><div></div></div>`; })()}
-    <div class="card" style="padding:0">
-      <div class="section-title" style="margin:14px 16px 6px">請求書一覧${invoiceFilter === "all" ? "" : `：${invoiceFilter}`}（${(invoiceFilter === "all" ? invoices : invoices.filter(i => i.status === invoiceFilter)).length}件）</div>
-      <table>
-        <thead><tr><th>管理番号</th><th>発行日</th><th>支払期限</th><th>宛先</th><th>明細</th><th>請求金額</th><th>状況</th><th>操作</th></tr></thead>
-        <tbody>
-          ${(invoiceFilter === "all" ? invoices : invoices.filter(i => i.status === invoiceFilter)).map(i => `
-            <tr>
-              <td><b>${i.id}</b></td><td>${i.date}</td><td>${i.dueDate}</td>
-              <td><span class="badge ${i.payeeType === "取次店" ? "b-blue" : "b-purple"}">${i.payeeType}</span> ${payeeName(i)}</td>
-              <td>${i.lines.length} 行${i.orderIds.length ? `<br><span style="font-size:11px;color:var(--muted)">元注文 ${i.orderIds.join(", ")}</span>` : ""}</td>
-              <td><b>${yen(invoiceTotal(i))}</b></td>
-              <td>${invBadge(i.status)}</td>
-              <td style="white-space:nowrap">
-                <button class="btn btn-ghost btn-sm" onclick="openInvoicePreview('${i.id}')">プレビュー</button>
-                ${i.status === "作成済み" ? `<button class="btn btn-ghost btn-sm" onclick="openInvoiceEditor('${i.id}')">編集</button> <button class="btn btn-primary btn-sm" onclick="setInvoiceStatus('${i.id}','送付済み')">送付済みにする</button>` : ""}
-                ${i.status === "送付済み" ? `<span style="font-size:11px;color:var(--muted)">${i.sentAt} 送付</span> <button class="btn btn-success btn-sm" onclick="setInvoiceStatus('${i.id}','入金済')">入金済にする</button>` : ""}
-              </td>
-            </tr>`).join("") || `<tr><td colspan="8" style="color:var(--muted)">請求書はまだありません</td></tr>`}
-        </tbody>
-      </table>
-    </div>`;
+      const K = "hqinv", R = "renderHqInvoice";
+      const G = { id: i => i.id, kind: i => i.kind || "消耗品", date: i => i.date, month: i => monthOf(i.date), due: i => i.dueDate, payee: i => payeeName(i), total: i => invoiceTotal(i), status: i => i.status };
+      const months = [...new Set(invoices.map(G.month))].sort().reverse();
+      const payees = [...new Set(invoices.map(G.payee))].sort();
+      const rows = applyTable(K, invoices, G);
+      return `
+      <div class="filters">
+        ${filterSelect(K, "kind", "種別", ["消耗品", "加盟金"], R)}
+        ${filterSelect(K, "month", "発行月", months.map(m => ({ value: m, label: monthLabel(m) })), R)}
+        ${filterSelect(K, "payee", "宛先", payees, R)}
+        ${filterSelect(K, "status", "状況", INVOICE_STATUS, R)}
+        ${filterSummary(K, R, rows.length, invoices.length)}
+      </div>
+      <div class="card" style="padding:0">
+        <table>
+          <thead><tr>${thSort(K, "id", "管理番号", R)}${thSort(K, "kind", "種別", R)}${thSort(K, "date", "発行日", R)}${thSort(K, "due", "支払期限", R)}${thSort(K, "payee", "宛先", R)}<th>内容</th>${thSort(K, "total", "請求金額", R)}${thSort(K, "status", "状況", R)}<th>操作</th></tr></thead>
+          <tbody>
+            ${rows.map(i => `
+              <tr>
+                <td><b>${i.id}</b></td><td>${kindBadge(i.kind)}</td><td>${i.date}</td><td>${i.dueDate}</td>
+                <td>${payeeName(i)}<br><span style="font-size:11px;color:var(--muted)">${i.payeeType}</span></td>
+                <td>${i.kind === "加盟金" ? "加盟金" : `${i.lines.length} 行`}${i.orderIds.length ? `<br><span style="font-size:11px;color:var(--muted)">元注文 ${i.orderIds.join(", ")}</span>` : ""}${i.contractId ? `<br><span style="font-size:11px;color:var(--muted)">契約書 #${i.contractId}</span>` : ""}</td>
+                <td><b>${yen(invoiceTotal(i))}</b></td>
+                <td>${invBadge(i.status)}${i.sentAt ? `<br><span style="font-size:11px;color:var(--muted)">${i.sentAt} 送付</span>` : ""}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn btn-ghost btn-sm" onclick="openInvoicePreview('${i.id}')">プレビュー</button>
+                  ${i.status === "作成済み" ? `<button class="btn btn-ghost btn-sm" onclick="openInvoiceEditor('${i.id}')">編集</button> <button class="btn btn-primary btn-sm" onclick="setInvoiceStatus('${i.id}','送付済み')">送付済みにする</button>` : ""}
+                  ${i.status === "送付済み" ? `<button class="btn btn-success btn-sm" onclick="setInvoiceStatus('${i.id}','入金済')">入金済にする</button>` : ""}
+                </td>
+              </tr>`).join("") || `<tr><td colspan="9" style="color:var(--muted)">条件に合う請求書がありません</td></tr>`}
+          </tbody>
+        </table>
+      </div>`; })()}`;
 }
 function setInvoiceStatus(id, status) {
   const inv = invoiceById(id);
@@ -1177,7 +1233,42 @@ function setInvoiceStatus(id, status) {
     inv.sentAt = TODAY; // 二重送付防止のため送付日を残す（本番では送付時刻）
   }
   inv.status = status;
-  if (status === "入金済") inv.orderIds.forEach(oid => { const o = supplyOrders.find(x => x.id === oid); if (o) o.paid = "入金済"; });
+  if (status === "入金済") {
+    inv.orderIds.forEach(oid => { const o = supplyOrders.find(x => x.id === oid); if (o) o.paid = "入金済"; });
+    if (inv.contractId) { const c = contracts.find(x => x.id === inv.contractId); if (c) c.feePaid = "入金済"; }
+  }
+  renderAll();
+}
+// 消耗品注文の入金を直接記録する（請求書があればその状態も入金済にそろえる）
+function markPoPaid(poId) {
+  const o = supplyOrders.find(x => x.id === poId);
+  if (!confirm(`${o.id}（${opById(o.contractorId).name}・${yen(poAmount(o))}）を入金済にしますか？`)) return;
+  o.paid = "入金済";
+  if (o.invoiceId) { const inv = invoiceById(o.invoiceId); if (inv) inv.status = "入金済"; }
+  renderAll();
+}
+// 契約書管理から加盟金の請求書を作成する（宛先は契約先の施工代理店）
+function createFeeInvoice(contractId) {
+  const c = contracts.find(x => x.id === contractId);
+  if (c.feeInvoiceId) { openInvoicePreview(c.feeInvoiceId); return; }
+  const payee = contractors.find(x => x.name === c.entity);
+  if (!payee) { alert("契約先に対応する施工代理店が見つかりません"); return; }
+  const inv = {
+    id: nextInvoiceNumber(TODAY), kind: "加盟金", date: TODAY, dueDate: addDays(TODAY, 30),
+    payeeType: "施工代理店", payeeId: payee.id,
+    lines: [{ productId: null, name: "加盟金（施工代理店契約）", qty: 1, unitPrice: c.feeAmount }],
+    shipping: 0, note: `施工代理店契約（${c.file}）に基づく加盟金`, status: "作成済み", sentAt: null, orderIds: [], contractId: c.id,
+  };
+  invoices.unshift(inv);
+  c.feeInvoiceId = inv.id;
+  openInvoiceEditor(inv.id);
+}
+// 加盟金の入金を直接記録する（請求書があればその状態も入金済にそろえる）
+function markContractPaid(contractId) {
+  const c = contracts.find(x => x.id === contractId);
+  if (!confirm(`${c.entity} の加盟金 ${yen(c.feeAmount)} を入金済にしますか？`)) return;
+  c.feePaid = "入金済";
+  if (c.feeInvoiceId) { const inv = invoiceById(c.feeInvoiceId); if (inv) inv.status = "入金済"; }
   renderAll();
 }
 
@@ -1202,14 +1293,16 @@ function renderInvoiceEditor() {
       <div class="form-group"><label>発行日</label><input type="date" value="${inv.date}" onchange="editingInvoice.date = this.value"></div>
       <div class="form-group"><label>支払期限</label><input type="date" value="${inv.dueDate}" onchange="editingInvoice.dueDate = this.value"></div>
     </div>
-    <div class="section-title">明細（商品はプルダウンから選択・数量と単価は修正可）</div>
+    <div class="section-title">${inv.kind === "加盟金" ? "明細（品名・数量・単価は修正可）" : "明細（商品はプルダウンから選択・数量と単価は修正可）"}</div>
     <div class="card inv-lines" style="padding:0;margin-bottom:10px">
       <table>
         <thead><tr><th>商品</th><th>数量</th><th>単価（税込）</th><th>金額</th><th></th></tr></thead>
         <tbody>
           ${inv.lines.map((l, i) => `
             <tr>
-              <td><select onchange="invLineProduct(${i}, parseInt(this.value))">${products.map(p => `<option value="${p.id}" ${p.id === l.productId ? "selected" : ""}>${p.name}${p.published ? "" : "（非公開）"}</option>`).join("")}</select></td>
+              <td>${l.productId == null
+                ? `<input type="text" value="${l.name || ""}" oninput="editingInvoice.lines[${i}].name = this.value" placeholder="品名（例：加盟金）">`
+                : `<select onchange="invLineProduct(${i}, parseInt(this.value))">${products.map(p => `<option value="${p.id}" ${p.id === l.productId ? "selected" : ""}>${p.name}${p.published ? "" : "（非公開）"}</option>`).join("")}</select>`}</td>
               <td><input type="number" min="1" value="${l.qty}" oninput="invLineField(${i}, 'qty', this.value)"></td>
               <td><input type="number" min="0" step="1" value="${l.unitPrice}" oninput="invLineField(${i}, 'unitPrice', this.value)"></td>
               <td class="inv-line-amount" id="inv-line-${i}">${yen((Number(l.unitPrice) || 0) * (Number(l.qty) || 0))}</td>
@@ -1246,7 +1339,7 @@ function invRefreshTotals() {
 function invSetPayeeType(t) {
   editingInvoice.payeeType = t;
   editingInvoice.payeeId = (t === "取次店" ? shops : contractors)[0].id;
-  editingInvoice.lines.forEach(l => { l.unitPrice = unitPriceFor(prodById(l.productId), t); }); // 取次店向け価格に切り替え
+  editingInvoice.lines.forEach(l => { if (l.productId != null) l.unitPrice = unitPriceFor(prodById(l.productId), t); }); // 取次店向け価格に切り替え（加盟金などの自由明細は据え置き）
   renderInvoiceEditor();
 }
 function invLineProduct(i, productId) {
@@ -1256,6 +1349,7 @@ function invLineProduct(i, productId) {
 }
 function invLineField(i, field, value) { editingInvoice.lines[i][field] = Number(value) || 0; invRefreshTotals(); }
 function invAddLine() {
+  if (editingInvoice.kind === "加盟金") { editingInvoice.lines.push({ productId: null, name: "", qty: 1, unitPrice: 0 }); renderInvoiceEditor(); return; }
   const p = orderableProducts()[0] || products[0];
   editingInvoice.lines.push({ productId: p.id, qty: 1, unitPrice: unitPriceFor(p, editingInvoice.payeeType) });
   renderInvoiceEditor();
@@ -1287,7 +1381,7 @@ function renderInvoiceDocument(inv) {
       <table>
         <thead><tr><th style="width:50%">品名</th><th>数量</th><th>単価（税込）</th><th>金額（税込）</th></tr></thead>
         <tbody>
-          ${inv.lines.map(l => { const p = prodById(l.productId); return `<tr><td>${p ? p.name : "—"}</td><td class="num">${l.qty} ${p ? p.unit : ""}</td><td class="num">${yen(Number(l.unitPrice) || 0)}</td><td class="num">${yen((Number(l.unitPrice) || 0) * (Number(l.qty) || 0))}</td></tr>`; }).join("")}
+          ${inv.lines.map(l => { return `<tr><td>${lineName(l)}</td><td class="num">${l.qty} ${lineUnit(l)}</td><td class="num">${yen(Number(l.unitPrice) || 0)}</td><td class="num">${yen((Number(l.unitPrice) || 0) * (Number(l.qty) || 0))}</td></tr>`; }).join("")}
           <tr><td>送料</td><td class="num">—</td><td class="num">—</td><td class="num">${yen(Number(inv.shipping) || 0)}</td></tr>
           <tr><td colspan="3" style="text-align:right">小計（税込）</td><td class="num">${yen(invoiceTotal(inv))}</td></tr>
           <tr><td colspan="3" style="text-align:right">（内 消費税 ${(TAX_RATE * 100).toFixed(0)}%）</td><td class="num">${yen(invoiceTax(inv))}</td></tr>

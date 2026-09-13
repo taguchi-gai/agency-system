@@ -209,9 +209,32 @@ function normalizeCarName(s) {
     .replace(/[\s\-_・ー－:：\/／]/g, "");
 }
 
-const _carDictIndex = CAR_DICTIONARY
-  .map(e => ({ ...e, _keys: e.keywords.map(normalizeCarName).filter(k => k.length > 0), priority: e.priority || 10 }))
-  .sort((a, b) => b.priority - a.priority);
+// 本部が画面から手入力で追加した車種。標準辞書より優先（priority 30）して判定する。
+// モックでは同じブラウザ内に保存（localStorage）。本番ではDBに保存する。
+let CAR_DICTIONARY_USER = [];
+let _carDictIndex = [];
+
+function rebuildCarDict() {
+  _carDictIndex = [...CAR_DICTIONARY_USER, ...CAR_DICTIONARY]
+    .map(e => ({ ...e, _keys: e.keywords.map(normalizeCarName).filter(k => k.length > 0), priority: e.priority || 10 }))
+    .sort((a, b) => b.priority - a.priority);
+}
+function loadUserCarDict() {
+  try { CAR_DICTIONARY_USER = JSON.parse(localStorage.getItem("carDictUser") || "[]"); } catch (e) { CAR_DICTIONARY_USER = []; }
+  rebuildCarDict();
+}
+function saveUserCarDict() {
+  try { localStorage.setItem("carDictUser", JSON.stringify(CAR_DICTIONARY_USER)); } catch (e) {}
+}
+function addCarDictEntry(entry) {
+  CAR_DICTIONARY_USER.unshift({ ...entry, priority: entry.priority || 30, user: true, addedAt: new Date().toISOString().slice(0, 10) });
+  saveUserCarDict(); rebuildCarDict();
+}
+function removeCarDictEntry(index) {
+  CAR_DICTIONARY_USER.splice(index, 1);
+  saveUserCarDict(); rebuildCarDict();
+}
+loadUserCarDict();
 
 // 戻り値：{ carClass, price, entry } / 判定不能なら null
 function judgeCarClass(input) {
