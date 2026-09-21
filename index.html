@@ -1277,8 +1277,9 @@ const INVOICE_STATUS = ["作成済み", "送付済み", "入金済"];
 // kind: "消耗品"（消耗品注文から作成）| "加盟金"（契約書管理から作成。contractId で契約書と紐づく）
 let invoices = [
   { id: "INV-202606-001", kind: "消耗品", date: "2026-06-06", dueDate: "2026-07-06", payeeType: "施工代理店", payeeId: 3, lines: [{ productId: 1, qty: 12, unitPrice: 16500 }, { productId: 2, qty: 5, unitPrice: 2200 }], shipping: 0, note: "消耗品注文 PO-0004（2026-06-05）分", status: "入金済", sentAt: "2026-06-06", orderIds: ["PO-0004"] },
-  { id: "INV-202605-002", kind: "消耗品", date: "2026-05-23", dueDate: "2026-06-22", payeeType: "施工代理店", payeeId: 2, lines: [{ productId: 1, qty: 10, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0003（2026-05-22）分", status: "入金済", sentAt: "2026-05-23", orderIds: ["PO-0003"] },
-  { id: "INV-202605-001", kind: "消耗品", date: "2026-05-16", dueDate: "2026-06-15", payeeType: "施工代理店", payeeId: 1, lines: [{ productId: 1, qty: 20, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0002（2026-05-15）分", status: "送付済み", sentAt: "2026-05-16", orderIds: ["PO-0002"] },
+  { id: "INV-202605-003", kind: "消耗品", date: "2026-05-23", dueDate: "2026-06-22", payeeType: "施工代理店", payeeId: 2, lines: [{ productId: 1, qty: 10, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0003（2026-05-22）分", status: "入金済", sentAt: "2026-05-23", orderIds: ["PO-0003"] },
+  { id: "INV-202605-002", kind: "消耗品", date: "2026-05-16", dueDate: "2026-06-15", payeeType: "施工代理店", payeeId: 1, lines: [{ productId: 1, qty: 20, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0002（2026-05-15）分", status: "送付済み", sentAt: "2026-05-16", orderIds: ["PO-0002"] },
+  { id: "INV-202605-001", kind: "消耗品", date: "2026-05-02", dueDate: "2026-06-01", payeeType: "施工代理店", payeeId: 4, lines: [{ productId: 3, qty: 8, unitPrice: 1000 }], shipping: 1000, note: "消耗品注文 PO-0001（2026-05-01）分", status: "入金済", sentAt: "2026-05-02", orderIds: ["PO-0001"] },
   { id: "INV-202604-001", kind: "加盟金", date: "2026-04-02", dueDate: "2026-05-02", payeeType: "施工代理店", payeeId: 3, lines: [{ productId: null, name: "加盟金（施工代理店契約）", qty: 1, unitPrice: 1100000 }], shipping: 0, note: "施工代理店契約（施工代理店契約書_関西施工サービス.pdf）に基づく加盟金", status: "送付済み", sentAt: "2026-04-02", orderIds: [], contractId: 3 },
 ];
 invoices.forEach(inv => {
