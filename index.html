@@ -338,11 +338,12 @@ function orderableProducts() { return products.filter(p => p.published); }
 
 // 消耗品注文（施工代理店 → 本部）
 let supplyOrders = [
-  { id: "PO-0005", date: "2026-06-09", contractorId: 1, productId: 2, qty: 6, status: "受注", paid: "未入金" },
-  { id: "PO-0004", date: "2026-06-05", contractorId: 3, productId: 1, qty: 12, status: "出荷済", paid: "入金済" },
-  { id: "PO-0003", date: "2026-05-22", contractorId: 2, productId: 1, qty: 10, status: "出荷済", paid: "入金済" },
-  { id: "PO-0002", date: "2026-05-15", contractorId: 1, productId: 1, qty: 20, status: "出荷済", paid: "未入金" },
-  { id: "PO-0001", date: "2026-05-01", contractorId: 4, productId: 3, qty: 8, status: "出荷済", paid: "入金済" },
+  // 1注文に複数商品を含められる（lines）。送料は注文全体の商品代で判定する
+  { id: "PO-0005", date: "2026-06-09", contractorId: 1, lines: [{ productId: 2, qty: 6 }], status: "受注", paid: "未入金" },
+  { id: "PO-0004", date: "2026-06-05", contractorId: 3, lines: [{ productId: 1, qty: 12 }, { productId: 2, qty: 5 }], status: "出荷済", paid: "入金済" },
+  { id: "PO-0003", date: "2026-05-22", contractorId: 2, lines: [{ productId: 1, qty: 10 }], status: "出荷済", paid: "入金済" },
+  { id: "PO-0002", date: "2026-05-15", contractorId: 1, lines: [{ productId: 1, qty: 20 }], status: "出荷済", paid: "未入金" },
+  { id: "PO-0001", date: "2026-05-01", contractorId: 4, lines: [{ productId: 3, qty: 8 }], status: "出荷済", paid: "入金済" },
 ];
 
 // 本部在庫の入出庫履歴（入庫・出荷・調整）。qty は増減（出荷はマイナス）、after は処理後の在庫
@@ -377,9 +378,13 @@ const opById = id => contractors.find(c => c.id === id);
 const prodById = id => products.find(p => p.id === id);
 // 商品代の小計（税込）
 const poSubtotal = o => {
-  const price = prodById(o.productId).price;
-  return price == null ? null : price * o.qty;
+  let sum = 0;
+  for (const l of o.lines) { const price = prodById(l.productId).price; if (price == null) return null; sum += price * l.qty; }
+  return sum;
 };
+// 注文明細の表示用（商品名 × 数量 を改行区切り）
+const poLinesHtml = o => o.lines.map(l => { const p = prodById(l.productId); return `${p.name} × ${l.qty} ${p.unit}`; }).join("<br>");
+const poQtyTotal = o => o.lines.reduce((s, l) => s + l.qty, 0);
 // 送料を含めた請求額（税込）
 const poAmount = o => {
   const sub = poSubtotal(o);
@@ -741,7 +746,7 @@ function renderHqPo() {
     <div class="section-title">施工代理店からの注文</div>
     ${(() => {
       const K = "hqpo", R = "renderHqPo";
-      const G = { id: o => o.id, date: o => o.date, month: o => monthOf(o.date), op: o => opById(o.contractorId).name, product: o => prodById(o.productId).name, qty: o => o.qty, total: o => poAmount(o) || 0, paid: o => o.paid, status: o => o.status, invoice: o => o.invoiceId ? (invoiceById(o.invoiceId) || {}).status || "作成済み" : "未作成" };
+      const G = { id: o => o.id, date: o => o.date, month: o => monthOf(o.date), op: o => opById(o.contractorId).name, product: o => o.lines.map(l => prodById(l.productId).name).join("・"), qty: o => poQtyTotal(o), total: o => poAmount(o) || 0, paid: o => o.paid, status: o => o.status, invoice: o => o.invoiceId ? (invoiceById(o.invoiceId) || {}).status || "作成済み" : "未作成" };
       const months = [...new Set(supplyOrders.map(G.month))].sort().reverse();
       const rows = applyTable(K, supplyOrders, G);
       return `
@@ -760,7 +765,7 @@ function renderHqPo() {
             ${rows.map(o => `
               <tr>
                 <td><b>${o.id}</b></td><td>${o.date}</td><td>${opById(o.contractorId).name}</td>
-                <td>${prodById(o.productId).name}</td><td>${o.qty}</td>
+                <td style="font-size:12px">${poLinesHtml(o)}</td><td>${poQtyTotal(o)}</td>
                 <td>${yen(poSubtotal(o))}</td>
                 <td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td>
                 <td><b>${yen(poAmount(o))}</b></td>
@@ -778,11 +783,14 @@ function renderHqPo() {
 }
 function shipPo(poId) {
   const o = supplyOrders.find(x => x.id === poId);
-  const p = prodById(o.productId);
-  if (p.stock < o.qty && !confirm(`在庫が不足しています（在庫 ${p.stock} ${p.unit}、注文 ${o.qty} ${p.unit}）。このまま出荷済にしますか？`)) return;
+  const short = o.lines.filter(l => prodById(l.productId).stock < l.qty).map(l => { const p = prodById(l.productId); return `${p.name}（在庫 ${p.stock} ${p.unit}、注文 ${l.qty} ${p.unit}）`; });
+  if (short.length && !confirm(`在庫が不足しています：${short.join("、")}。このまま出荷済にしますか？`)) return;
   o.status = "出荷済";
-  p.stock = Math.max(0, p.stock - o.qty);
-  stockLogs.unshift({ date: TODAY, productId: p.id, type: "出荷", qty: -o.qty, after: p.stock, note: `${o.id} ${opById(o.contractorId).name}` });
+  o.lines.forEach(l => {
+    const p = prodById(l.productId);
+    p.stock = Math.max(0, p.stock - l.qty);
+    stockLogs.unshift({ date: TODAY, productId: p.id, type: "出荷", qty: -l.qty, after: p.stock, note: `${o.id} ${opById(o.contractorId).name}` });
+  });
   renderAll();
 }
 
@@ -1153,7 +1161,7 @@ const INVOICE_STATUS = ["作成済み", "送付済み", "入金済"];
 // サンプル：過去に作成・送付・入金済みになった請求書（元注文と紐づく）
 // kind: "消耗品"（消耗品注文から作成）| "加盟金"（契約書管理から作成。contractId で契約書と紐づく）
 let invoices = [
-  { id: "INV-202606-001", kind: "消耗品", date: "2026-06-06", dueDate: "2026-07-06", payeeType: "施工代理店", payeeId: 3, lines: [{ productId: 1, qty: 12, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0004（2026-06-05）分", status: "入金済", sentAt: "2026-06-06", orderIds: ["PO-0004"] },
+  { id: "INV-202606-001", kind: "消耗品", date: "2026-06-06", dueDate: "2026-07-06", payeeType: "施工代理店", payeeId: 3, lines: [{ productId: 1, qty: 12, unitPrice: 16500 }, { productId: 2, qty: 5, unitPrice: 2200 }], shipping: 0, note: "消耗品注文 PO-0004（2026-06-05）分", status: "入金済", sentAt: "2026-06-06", orderIds: ["PO-0004"] },
   { id: "INV-202605-002", kind: "消耗品", date: "2026-05-23", dueDate: "2026-06-22", payeeType: "施工代理店", payeeId: 2, lines: [{ productId: 1, qty: 10, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0003（2026-05-22）分", status: "入金済", sentAt: "2026-05-23", orderIds: ["PO-0003"] },
   { id: "INV-202605-001", kind: "消耗品", date: "2026-05-16", dueDate: "2026-06-15", payeeType: "施工代理店", payeeId: 1, lines: [{ productId: 1, qty: 20, unitPrice: 16500 }], shipping: 0, note: "消耗品注文 PO-0002（2026-05-15）分", status: "送付済み", sentAt: "2026-05-16", orderIds: ["PO-0002"] },
   { id: "INV-202604-001", kind: "加盟金", date: "2026-04-02", dueDate: "2026-05-02", payeeType: "施工代理店", payeeId: 3, lines: [{ productId: null, name: "加盟金（施工代理店契約）", qty: 1, unitPrice: 1100000 }], shipping: 0, note: "施工代理店契約（施工代理店契約書_関西施工サービス.pdf）に基づく加盟金", status: "送付済み", sentAt: "2026-04-02", orderIds: [], contractId: 3 },
@@ -1188,12 +1196,11 @@ function invoiceCellHtml(o) {
 function createInvoiceFromOrder(poId) {
   const o = supplyOrders.find(x => x.id === poId);
   if (o.invoiceId) { openInvoiceEditor(o.invoiceId); return; }
-  const p = prodById(o.productId);
   const inv = {
     id: nextInvoiceNumber(TODAY), kind: "消耗品", date: TODAY, dueDate: addDays(TODAY, 30),
     payeeType: "施工代理店", payeeId: o.contractorId,
-    lines: [{ productId: p.id, qty: o.qty, unitPrice: p.price }],
-    shipping: shippingFee(p.price * o.qty), note: `消耗品注文 ${o.id}（${o.date}）分`, status: "作成済み", sentAt: null, orderIds: [o.id],
+    lines: o.lines.map(l => ({ productId: l.productId, qty: l.qty, unitPrice: prodById(l.productId).price })),
+    shipping: shippingFee(poSubtotal(o) || 0), note: `消耗品注文 ${o.id}（${o.date}）分`, status: "作成済み", sentAt: null, orderIds: [o.id],
   };
   invoices.unshift(inv);
   o.invoiceId = inv.id;
@@ -1993,7 +2000,7 @@ function renderOpPo() {
       <table>
         <thead><tr><th>注文番号</th><th>注文日</th><th>商品</th><th>数量</th><th>商品代</th><th>送料</th><th>合計</th><th>入金</th><th>状況</th></tr></thead>
         <tbody>
-          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${prodById(o.productId).name}</td><td>${o.qty}</td><td>${yen(poSubtotal(o))}</td><td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td><td><b>${yen(poAmount(o))}</b></td><td>${paidBadge(o.paid)}</td><td>${opPoBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--muted)">注文履歴はありません</td></tr>`}
+          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td style="font-size:12px">${poLinesHtml(o)}</td><td>${poQtyTotal(o)}</td><td>${yen(poSubtotal(o))}</td><td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td><td><b>${yen(poAmount(o))}</b></td><td>${paidBadge(o.paid)}</td><td>${opPoBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--muted)">注文履歴はありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
@@ -2001,11 +2008,19 @@ function renderOpPo() {
 function openPoModal() {
   openModal(`
     <h2>消耗品を注文</h2>
-    <div class="form-grid">
-      <div class="form-group full"><label>商品（税込）</label>
-        <select id="po-product" onchange="updatePoSummary()">${orderableProducts().map(p => `<option value="${p.id}">${p.name}（${yen(p.price)} / ${p.unit}）</option>`).join("")}</select>
-      </div>
-      <div class="form-group"><label>数量</label><input type="number" id="po-qty" value="10" min="1" oninput="updatePoSummary()"></div>
+    <div class="alert alert-info" style="font-size:12px">複数の商品をまとめて1回で注文できます。送料は<b>注文全体の商品代の合計</b>で判定します（${yen(SHIPPING.freeThreshold)}以上で無料）。</div>
+    <div class="card" style="padding:0;margin-bottom:10px">
+      <table>
+        <thead><tr><th>商品</th><th>単価（税込）</th><th style="width:110px">数量</th><th>金額</th></tr></thead>
+        <tbody>
+          ${orderableProducts().map(p => `
+            <tr>
+              <td>${p.name}</td><td>${yen(p.price)} / ${p.unit}</td>
+              <td><input type="number" class="po-qty" data-product="${p.id}" value="0" min="0" oninput="updatePoSummary()"></td>
+              <td id="po-line-${p.id}">${yen(0)}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
     </div>
     <div id="po-summary" class="price-box"></div>
     <div class="modal-actions">
@@ -2014,22 +2029,29 @@ function openPoModal() {
     </div>`);
   updatePoSummary();
 }
+// 入力中の明細（数量 0 は除く）
+function poFormLines() {
+  return [...document.querySelectorAll(".po-qty")].map(i => ({ productId: parseInt(i.dataset.product), qty: parseInt(i.value) || 0 })).filter(l => l.qty > 0);
+}
 function updatePoSummary() {
-  const p = prodById(parseInt($("po-product").value));
-  const qty = parseInt($("po-qty").value) || 0;
-  const sub = p.price * qty;
+  document.querySelectorAll(".po-qty").forEach(i => { const p = prodById(parseInt(i.dataset.product)); $("po-line-" + p.id).textContent = yen(p.price * (parseInt(i.value) || 0)); });
+  const lines = poFormLines();
+  const sub = lines.reduce((s, l) => s + prodById(l.productId).price * l.qty, 0);
   const ship = shippingFee(sub);
+  const remain = SHIPPING.freeThreshold - sub;
   $("po-summary").innerHTML = `
-    <div class="price-row"><span>商品代（${p.name} × ${qty}）</span><span>${yen(sub)}</span></div>
-    <div class="price-row"><span>送料</span><span>${ship === 0 ? `無料（${yen(SHIPPING.freeThreshold)}以上）` : yen(ship)}</span></div>
+    ${lines.map(l => { const p = prodById(l.productId); return `<div class="price-row"><span>${p.name} × ${l.qty} ${p.unit}</span><span>${yen(p.price * l.qty)}</span></div>`; }).join("") || `<div class="price-row" style="color:var(--muted)"><span>数量を入力してください</span><span></span></div>`}
+    <div class="price-row"><span>商品代 小計</span><span>${yen(sub)}</span></div>
+    <div class="price-row"><span>送料</span><span>${ship === 0 && sub > 0 ? `無料（${yen(SHIPPING.freeThreshold)}以上）` : yen(ship)}${ship > 0 ? `<br><small style="color:var(--muted)">あと ${yen(remain)} で送料無料</small>` : ""}</span></div>
     <div class="price-row total"><span>お支払い合計（税込）</span><span>${yen(sub + ship)}</span></div>`;
 }
 function savePo() {
+  const lines = poFormLines();
+  if (!lines.length) { alert("数量を1つ以上入力してください"); return; }
   const num = supplyOrders.length + 1;
   supplyOrders.unshift({
     id: "PO-" + String(num).padStart(4, "0"), date: TODAY, contractorId: session.entityId,
-    productId: parseInt($("po-product").value), qty: parseInt($("po-qty").value) || 1,
-    status: "受注", paid: "未入金",
+    lines, status: "受注", paid: "未入金",
   });
   closeModal(); renderAll();
 }
