@@ -1,8 +1,8 @@
 // =====================================================
 // 車種辞書（施工金額の自動判定用）
 // -----------------------------------------------------
-// 区分と料金：軽 ¥15,000 / 普通 ¥18,000 / ワンボックス ¥20,000
-// オプション：やにとり ¥5,000
+// 区分と料金（税込）：軽 ¥16,500 / 普通 ¥19,800 / ワンボックス ¥22,000
+// オプション：やにとり ¥5,500（税込）
 //
 // 判定方法：入力された車種名を正規化（全角→半角・大文字化・空白/ハイフン除去）し、
 // keywords のいずれかが含まれる項目を探す。priority が高い項目を先に評価するため、
@@ -227,7 +227,9 @@ function saveUserCarDict() {
   try { localStorage.setItem("carDictUser", JSON.stringify(CAR_DICTIONARY_USER)); } catch (e) {}
 }
 function addCarDictEntry(entry) {
-  CAR_DICTIONARY_USER.unshift({ ...entry, priority: entry.priority || 30, user: true, addedAt: new Date().toISOString().slice(0, 10) });
+  const now = new Date(); // ローカル日付（toISOString は UTC になり日本では日付がずれる）
+  const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  CAR_DICTIONARY_USER.unshift({ ...entry, priority: entry.priority || 30, user: true, addedAt });
   saveUserCarDict(); rebuildCarDict();
 }
 function removeCarDictEntry(index) {

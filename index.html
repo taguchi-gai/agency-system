@@ -248,7 +248,7 @@ const TODAY = "2026-06-11";
 // 売上から決済代行会社（カード会社等）の手数料を引いた金額をベースに、
 // 本部10% / 取次店10% / 施工代理店80% で配分する。
 // 決済代行会社が未定のため paymentFeeRate のみ仮置き。決まったらこの値を入れ替えれば全画面に反映される。
-let commissionSettings = {
+const commissionSettings = {
   hqRate: 0.10,          // 本部の取り分
   shopRate: 0.10,        // 取次店の取り分
   contractorRate: 0.80,  // 施工代理店の取り分
@@ -332,7 +332,7 @@ let serviceOrders = [
 // published: false の商品は取次店・施工代理店の注文フォームに表示しない（準備が整ったら true にする）。
 let products = [
   { id: 1, name: "車の消臭プロ 10L", price: 16500, unit: "本", stock: 240, published: true },
-  { id: 2, name: "タバコの臭い取り 1L", price: 2200, unit: "本", stock: 80, published: true },
+  { id: 2, name: "タバコの臭い取り 1L", price: 2200, unit: "本", stock: 75, published: true },
   { id: 3, name: "280ml 空スプレー＋280mlパウチ セット", price: 1000, shopPrice: 2000, retailPrice: 2500, unit: "セット", stock: 0, published: false, note: "家電量販店向け。準備が整ったら公開する" },
 ];
 
@@ -347,14 +347,15 @@ let supplyOrders = [
   // 1注文に複数商品を含められる（lines）。送料は注文全体の商品代で判定する
   { id: "PO-0005", date: "2026-06-09", contractorId: 1, lines: [{ productId: 2, qty: 6 }], status: "受注", paid: "未入金" },
   { id: "PO-0004", date: "2026-06-05", contractorId: 3, lines: [{ productId: 1, qty: 12 }, { productId: 2, qty: 5 }], status: "出荷済", paid: "入金済", shippedAt: "2026-06-06", deliveryNoteId: "DN-202606-001" },
-  { id: "PO-0003", date: "2026-05-22", contractorId: 2, lines: [{ productId: 1, qty: 10 }], status: "出荷済", paid: "入金済", shippedAt: "2026-05-23", deliveryNoteId: "DN-202605-002" },
-  { id: "PO-0002", date: "2026-05-15", contractorId: 1, lines: [{ productId: 1, qty: 20 }], status: "出荷済", paid: "未入金", shippedAt: "2026-05-16", deliveryNoteId: "DN-202605-001" },
-  { id: "PO-0001", date: "2026-05-01", contractorId: 4, lines: [{ productId: 3, qty: 8 }], status: "出荷済", paid: "入金済", shippedAt: "2026-05-02", deliveryNoteId: "DN-202605-000" },
+  { id: "PO-0003", date: "2026-05-22", contractorId: 2, lines: [{ productId: 1, qty: 10 }], status: "出荷済", paid: "入金済", shippedAt: "2026-05-23", deliveryNoteId: "DN-202605-003" },
+  { id: "PO-0002", date: "2026-05-15", contractorId: 1, lines: [{ productId: 1, qty: 20 }], status: "出荷済", paid: "未入金", shippedAt: "2026-05-16", deliveryNoteId: "DN-202605-002" },
+  { id: "PO-0001", date: "2026-05-01", contractorId: 4, lines: [{ productId: 3, qty: 8 }], status: "出荷済", paid: "入金済", shippedAt: "2026-05-02", deliveryNoteId: "DN-202605-001" },
 ];
 
 // 本部在庫の入出庫履歴（入庫・出荷・調整）。qty は増減（出荷はマイナス）、after は処理後の在庫
 let stockLogs = [
   { date: "2026-06-05", productId: 1, type: "出荷", qty: -12, after: 240, note: "PO-0004 関西施工サービス" },
+  { date: "2026-06-05", productId: 2, type: "出荷", qty: -5, after: 75, note: "PO-0004 関西施工サービス" },
   { date: "2026-06-01", productId: 1, type: "入庫", qty: 100, after: 252, note: "○○製薬 納品書 No.0612" },
   { date: "2026-05-22", productId: 1, type: "出荷", qty: -10, after: 152, note: "PO-0003 茨城デタールサービス" },
   { date: "2026-05-15", productId: 1, type: "出荷", qty: -20, after: 162, note: "PO-0002 クリーンカーワークス東京" },
@@ -364,12 +365,12 @@ let stockLogs = [
   { date: "2026-04-25", productId: 3, type: "入庫", qty: 8, after: 8, note: "サンプル入荷" },
 ];
 
-// 契約書（モック）
+// 契約書（モック）。entityId は layer に応じて contractors.id / shops.id を指す（名前一致に頼らない）
 let contracts = [
-  { id: 1, layer: "施工代理店", entity: "クリーンカーワークス東京", file: "施工代理店契約書_クリーンカーワークス.pdf", uploaded: "2026-02-15", feeAmount: 1100000, feePaid: "入金済" },
-  { id: 2, layer: "施工代理店", entity: "茨城デタールサービス", file: "施工代理店契約書_茨城デタール.pdf", uploaded: "2026-03-01", feeAmount: 1100000, feePaid: "入金済" },
-  { id: 3, layer: "施工代理店", entity: "関西施工サービス", file: "施工代理店契約書_関西施工サービス.pdf", uploaded: "2026-04-01", feeAmount: 1100000, feePaid: "未入金" },
-  { id: 4, layer: "取次店", entity: "中古車センターつくば", file: "取次店規約同意書_つくば.pdf", uploaded: "2026-03-01", feeAmount: null, feePaid: null },
+  { id: 1, layer: "施工代理店", entityId: 1, entity: "クリーンカーワークス東京", file: "施工代理店契約書_クリーンカーワークス.pdf", uploaded: "2026-02-15", feeAmount: 1100000, feePaid: "入金済" },
+  { id: 2, layer: "施工代理店", entityId: 2, entity: "茨城デタールサービス", file: "施工代理店契約書_茨城デタール.pdf", uploaded: "2026-03-01", feeAmount: 1100000, feePaid: "入金済" },
+  { id: 3, layer: "施工代理店", entityId: 3, entity: "関西施工サービス", file: "施工代理店契約書_関西施工サービス.pdf", uploaded: "2026-04-01", feeAmount: 1100000, feePaid: "未入金" },
+  { id: 4, layer: "取次店", entityId: 1, entity: "中古車センターつくば", file: "取次店規約同意書_つくば.pdf", uploaded: "2026-03-01", feeAmount: null, feePaid: null },
 ];
 
 // =====================================================
@@ -411,6 +412,9 @@ function stBadge(s) {
   const map = { "稼働中": "b-green", "準備中": "b-orange", "休眠": "b-orange", "解約": "b-red" };
   return `<span class="badge ${map[s] || 'b-gray'}">${s}</span>`;
 }
+// Date → "YYYY-MM-DD"（ローカル日付）。toISOString() は UTC になり日本では1日ずれるため必ずこちらを使う
+function fmtDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function addDays(dateStr, days) { const d = new Date(dateStr + "T00:00:00"); d.setDate(d.getDate() + days); return fmtDate(d); }
 // 祝日は簡易モックのため未対応（本番では祝日カレンダーAPI等と連携する想定）
 const HOLIDAYS = ["2026-06-15"];
 function addBusinessDays(dateStr, days) {
@@ -419,10 +423,9 @@ function addBusinessDays(dateStr, days) {
   while (added < days) {
     d.setDate(d.getDate() + 1);
     const dow = d.getDay();
-    const iso = d.toISOString().slice(0, 10);
-    if (dow !== 0 && dow !== 6 && !HOLIDAYS.includes(iso)) added++;
+    if (dow !== 0 && dow !== 6 && !HOLIDAYS.includes(fmtDate(d))) added++;
   }
-  return d.toISOString().slice(0, 10);
+  return fmtDate(d);
 }
 function flowHtml(status) {
   const idx = SO_STATUS.indexOf(status);
@@ -602,7 +605,7 @@ function renderHqSo() {
   el.innerHTML = `
     <div class="page-title">施工注文管理</div>
     <div class="page-desc">取次店経由で入った注文を、近隣の施工代理店に割り当てます。行をクリックで詳細</div>
-    ${flowHtml("施工完了").replace(/done/g, "")}
+    ${flowHtml(null)}
     <div class="card" style="padding:0">
       <table>
         <thead><tr><th>注文番号</th><th>受付日</th><th>取次店</th><th>お客さま</th><th>施工場所</th><th>車種</th><th>区分 / 金額</th><th>希望日</th><th>施工代理店</th><th>状況</th><th>操作</th></tr></thead>
@@ -630,8 +633,8 @@ function hqSoAction(o) {
 }
 // 都道府県が一致する施工代理店を「近い」とみなす簡易距離モック（本番では施工現場住所を緯度経度に変換して算出）
 function mockDistance(customerPref, c) {
-  if (c.prefs.includes(customerPref)) return 0 + (c.id % 5);
-  if (c.region && customerPref) return 30 + (c.id * 7) % 50;
+  if (c.prefs.includes(customerPref)) return c.id % 5;          // 同一都道府県内（0〜4km 相当）
+  if (c.region && customerPref) return 30 + (c.id * 7) % 50;   // 他県
   return 999;
 }
 function openAssignModal(soId) {
@@ -661,7 +664,7 @@ function renderAssignList(soId, prefFilter) {
           ${list.map(({ c, dist }) => `
             <tr>
               <td><b>${c.name}</b><br><span style="font-size:11px;color:var(--muted)">対応：${c.areas}</span></td>
-              <td>${dist === 0 ? "同一都道府県" : dist + "km 相当"}</td>
+              <td>${c.prefs.includes(o.customerPref) ? "同一都道府県" : dist + "km 相当"}</td>
               <td>${c.availableDays.join("・")}</td>
               <td>${c.ngDates.length ? c.ngDates.join(", ") : "—"}</td>
               <td><button class="btn btn-primary btn-sm" onclick="assignOp('${o.id}', ${c.id})">割り当て</button></td>
@@ -1257,9 +1260,7 @@ invoices.forEach(inv => {
 });
 let editingInvoice = null;
 
-function addDays(dateStr, days) { const d = new Date(dateStr + "T00:00:00"); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
 function payeeName(inv) { const e = inv.payeeType === "取次店" ? shopById(inv.payeeId) : opById(inv.payeeId); return e ? e.name : "（未選択）"; }
-function payeeBank(inv) { const e = inv.payeeType === "取次店" ? shopById(inv.payeeId) : opById(inv.payeeId); return e && e.bank; }
 function unitPriceFor(product, payeeType) { return payeeType === "取次店" ? (product.shopPrice || product.price) : product.price; }
 function invoiceSubtotal(inv) { return inv.lines.reduce((s, l) => s + (Number(l.unitPrice) || 0) * (Number(l.qty) || 0), 0); }
 function invoiceTotal(inv) { return invoiceSubtotal(inv) + (Number(inv.shipping) || 0); }
@@ -1362,8 +1363,8 @@ function markPoPaid(poId) {
 function createFeeInvoice(contractId) {
   const c = contracts.find(x => x.id === contractId);
   if (c.feeInvoiceId) { openInvoicePreview(c.feeInvoiceId); return; }
-  const payee = contractors.find(x => x.name === c.entity);
-  if (!payee) { alert("契約先に対応する施工代理店が見つかりません"); return; }
+  const payee = c.layer === "施工代理店" ? opById(c.entityId) : null;
+  if (!payee) { alert("加盟金の請求書は施工代理店の契約にのみ作成できます"); return; }
   const inv = {
     id: nextInvoiceNumber(TODAY), kind: "加盟金", date: TODAY, dueDate: addDays(TODAY, 30),
     payeeType: "施工代理店", payeeId: payee.id,
@@ -1747,6 +1748,7 @@ function renderOpDash() {
       const years = [...new Set(myJobs.map(G.year))].sort().reverse();
       const yearSel = ts(K).filters.year || "";
       const months = [...new Set(myJobs.filter(o => !yearSel || G.year(o) === yearSel).map(G.month))].sort().reverse();
+      if (ts(K).filters.month && !months.includes(ts(K).filters.month)) ts(K).filters.month = ""; // 年を変えて存在しない月が残らないように
       const rows = applyTable(K, myJobs, G);
       return `
     <div class="card">
@@ -1756,7 +1758,7 @@ function renderOpDash() {
         ${filterSelect(K, "year", "年", years.map(y => ({ value: y, label: y + "年" })), R)}
         ${filterSelect(K, "month", "月", months.map(m => ({ value: m, label: monthLabel(m) })), R)}
         ${filterSelect(K, "mine", "取次店", ["自社取次店", "他社取次店"], R)}
-        ${filterSelect(K, "status", "状況", ["施工店確認中", "施工日確定", "施工前確認済み", "施工完了"], R)}
+        ${filterSelect(K, "status", "状況", SO_STATUS.slice(1), R)}
         ${filterSummary(K, R, rows.length, myJobs.length)}
         <span style="font-size:11px;color:var(--muted)">※ 見出しをクリックすると昇順⇄降順で並べ替え</span>
       </div>
@@ -1817,7 +1819,7 @@ function saveShop() {
 function renderOpContract() {
   const el = $("page-op-contract"); if (!el) return;
   const c0 = opById(session.entityId);
-  const mine = contracts.filter(c => c.entity === c0.name || myShops().some(s => s.name === c.entity));
+  const mine = contracts.filter(c => (c.layer === "施工代理店" && c.entityId === session.entityId) || (c.layer === "取次店" && myShops().some(s => s.id === c.entityId)));
   el.innerHTML = `
     <div class="page-title">契約書</div>
     <div class="page-desc">自社の施工代理店契約と、自社が開拓した取次店の同意書を管理します</div>
@@ -1826,7 +1828,7 @@ function renderOpContract() {
       <table>
         <thead><tr><th>種別</th><th>契約先</th><th>ファイル</th><th>アップロード日</th><th>加盟金</th><th>入金状況</th></tr></thead>
         <tbody>
-          ${mine.map(c => `<tr><td><span class="badge b-purple">${c.layer}</span></td><td>${c.entity}</td><td><span class="link">📎 ${c.file}</span></td><td>${c.uploaded}</td>
+          ${mine.map(c => `<tr><td><span class="badge ${c.layer === "取次店" ? "b-blue" : "b-purple"}">${c.layer}</span></td><td>${c.entity}</td><td><span class="link">📎 ${c.file}</span></td><td>${c.uploaded}</td>
             <td>${c.feeAmount != null ? yen(c.feeAmount) : "—"}</td><td>${c.feePaid ? paidBadge(c.feePaid) : "—"}</td></tr>`).join("") || `<tr><td colspan="6" style="color:var(--muted)">契約書はまだありません</td></tr>`}
         </tbody>
       </table>
@@ -1997,7 +1999,7 @@ function renderShopOrders() {
     <div class="alert alert-info" style="font-size:12px">※ 「金額」はお客さまからお預かりした施工料金（税込）です。「受取見込み」は、そこから決済代行会社の手数料（現在 ${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "・仮"}）を引いた金額の ${(commissionSettings.shopRate * 100).toFixed(0)}%（本部${(commissionSettings.hqRate * 100).toFixed(0)}%／取次店${(commissionSettings.shopRate * 100).toFixed(0)}%／施工代理店${(commissionSettings.contractorRate * 100).toFixed(0)}%）です。お支払いは施工完了の月を月末締めの翌月払いです。</div>
     <div class="filters">
       ${filterSelect(K, "done", "施工", ["未施工", "施工完了"], R)}
-      ${filterSelect(K, "status", "状況", ["新規受付", "施工店確認中", "施工日確定", "施工前確認済み", "施工完了"], R)}
+      ${filterSelect(K, "status", "状況", SO_STATUS, R)}
       ${filterSelect(K, "payment", "決済", [...new Set(list.map(G.payment))].filter(v => v).sort(), R)}
       ${filterSelect(K, "month", "受付月", months.map(m => ({ value: m, label: monthLabel(m) })), R)}
       ${filterSummary(K, R, rows.length, list.length)}
@@ -2063,7 +2065,7 @@ function renderOpJobs() {
       return `
     <div class="filters">
       ${filterSelect(K, "done", "施工", ["未施工", "施工完了"], R)}
-      ${filterSelect(K, "status", "状況", ["施工店確認中", "施工日確定", "施工前確認済み", "施工完了"], R)}
+      ${filterSelect(K, "status", "状況", SO_STATUS.slice(1), R)}
       ${filterSelect(K, "shop", "取次店", [...new Set(list.map(G.shop))].sort(), R)}
       ${filterSelect(K, "month", "受付月", months.map(m => ({ value: m, label: monthLabel(m) })), R)}
       ${filterSummary(K, R, rows.length, list.length)}
