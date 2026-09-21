@@ -561,7 +561,12 @@ function renderHqDash() {
   const waitSo = serviceOrders.filter(o => o.status === "施工店確認中").length;
   const doneSo = serviceOrders.filter(o => o.status === "施工完了").length;
   const poUnshipped = supplyOrders.filter(o => o.status === "受注").length;
-  const poSales = supplyOrders.reduce((s, o) => s + (poAmount(o) || 0), 0);
+  // 上部カードは当月のみ（過去分は売上管理・支払管理で月を選んで見る）
+  const thisMonth = monthOf(TODAY);
+  const poThisMonth = ordersInMonth(supplyOrders, thisMonth);
+  const poSales = poThisMonth.reduce((s, o) => s + (poAmount(o) || 0), 0);
+  const soDoneThisMonth = completedInMonth(thisMonth);
+  const soSales = soDoneThisMonth.reduce((s, o) => s + (o.amount || 0), 0);
   const activeShops = shops.filter(s => s.status === "稼働中").length;
 
   const alerts = [];
@@ -581,7 +586,8 @@ function renderHqDash() {
       <div class="card"><div class="stat-label">未対応の施工注文</div><div class="stat-value" style="color:${newSo ? "var(--danger)" : "inherit"}">${newSo}<span style="font-size:14px"> 件</span></div><div class="stat-sub">確認中 ${waitSo} 件 / 完了 ${doneSo} 件</div></div>
       <div class="card"><div class="stat-label">稼働取次店</div><div class="stat-value">${activeShops}<span style="font-size:14px"> 店</span></div><div class="stat-sub">目標 3,000 店（施工代理店10社 × 300店）</div></div>
       <div class="card"><div class="stat-label">消耗品 出荷待ち</div><div class="stat-value" style="color:${poUnshipped ? "var(--warning)" : "inherit"}">${poUnshipped}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工代理店からの注文</div></div>
-      <div class="card"><div class="stat-label">消耗品 累計売上</div><div class="stat-value">${yen(poSales)}</div><div class="stat-sub">2026年5月〜（送料込み）</div></div>
+      <div class="card"><div class="stat-label">${monthLabel(thisMonth)} 施工売上（完了分）</div><div class="stat-value">${yen(soSales)}</div><div class="stat-sub">${soDoneThisMonth.length} 件・施工完了日の月で集計</div></div>
+      <div class="card"><div class="stat-label">${monthLabel(thisMonth)} 消耗品売上</div><div class="stat-value">${yen(poSales)}</div><div class="stat-sub">${poThisMonth.length} 件・送料込み・未出荷分を含む<br>※ 過去の月は売上管理で確認</div></div>
     </div>
     <div class="two-col">
       <div class="card">
