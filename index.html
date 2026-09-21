@@ -311,12 +311,16 @@ const SO_STATUS = ["新規受付", "施工店確認中", "施工日確定", "施
 // carClass: 軽 / 普通 / ワンボックス、yani: やにとりオプション、amount: 決済金額、payment: 決済状況
 // customerPref/customerCity: 施工現場（お客さま宅など）の住所。施工代理店の割り当ては、
 // 取次店の所在地ではなくこちらを起点に距離判定する（取次店と施工現場は別の都道府県のこともある）。
+// 訪問の希望時間帯（取次店の申込フォームで選択。細かい時刻指定に変える場合はここを変更）
+const DESIRE_TIMES = ["指定なし", "午前（9:00〜12:00）", "午後早め（12:00〜15:00）", "午後遅め（15:00〜18:00）", "夕方以降（18:00〜）"];
+// 希望日＋希望時間の表示（一覧・詳細で共通）
+const desireHtml = o => `${o.desire || "—"}${o.desireTime && o.desireTime !== "指定なし" ? `<br><span style="font-size:11px;color:var(--muted)">🕒 ${o.desireTime}</span>` : ""}`;
 let serviceOrders = [
   // SO-0009：取次店は施工代理店2（つくば）の開拓店だが、施工は施工代理店1が担当（「他社取次店」からの案件の例）
-  { id: "SO-0009", date: "2026-06-11", shopId: 1, customer: "村田 様", customerTel: "090-9999-0000", customerPref: "埼玉県", customerCity: "春日部市", car: "ダイハツ タント", carClass: "軽", yani: false, amount: 16500, payment: "決済済み", desire: "2026-06-19", status: "施工日確定", contractorId: 1, scheduled: "2026-06-19", note: "" },
-  { id: "SO-0008", date: "2026-06-10", shopId: 1, customer: "斎藤 様", customerTel: "090-1111-2222", customerPref: "千葉県", customerCity: "船橋市", car: "トヨタ アルファード", carClass: "ワンボックス", yani: false, amount: 22000, payment: "決済済み", desire: "2026-06-18", status: "新規受付", contractorId: null, scheduled: null, note: "ペット臭が気になるとのこと" },
-  { id: "SO-0007", date: "2026-06-09", shopId: 4, customer: "岡本 様", customerTel: "080-3333-4444", customerPref: "京都府", customerCity: "京都市伏見区", car: "ホンダ N-BOX", carClass: "軽", yani: true, amount: 22000, payment: "決済済み", desire: "2026-06-15", status: "施工店確認中", contractorId: 3, scheduled: null, note: "タバコ臭" },
-  { id: "SO-0006", date: "2026-06-07", shopId: 2, customer: "三浦 様", customerTel: "070-5555-6666", customerPref: "埼玉県", customerCity: "大宮区", car: "日産 セレナ", carClass: "ワンボックス", yani: false, amount: 22000, payment: "決済済み", desire: "2026-06-14", status: "施工日確定", contractorId: 1, scheduled: "2026-06-14", note: "" },
+  { id: "SO-0009", date: "2026-06-11", shopId: 1, customer: "村田 様", customerTel: "090-9999-0000", customerPref: "埼玉県", customerCity: "春日部市", car: "ダイハツ タント", carClass: "軽", yani: false, amount: 16500, payment: "決済済み", desire: "2026-06-19", desireTime: "午前（9:00〜12:00）", status: "施工日確定", contractorId: 1, scheduled: "2026-06-19", note: "" },
+  { id: "SO-0008", date: "2026-06-10", shopId: 1, customer: "斎藤 様", customerTel: "090-1111-2222", customerPref: "千葉県", customerCity: "船橋市", car: "トヨタ アルファード", carClass: "ワンボックス", yani: false, amount: 22000, payment: "決済済み", desire: "2026-06-18", desireTime: "午後遅め（15:00〜18:00）", status: "新規受付", contractorId: null, scheduled: null, note: "ペット臭が気になるとのこと" },
+  { id: "SO-0007", date: "2026-06-09", shopId: 4, customer: "岡本 様", customerTel: "080-3333-4444", customerPref: "京都府", customerCity: "京都市伏見区", car: "ホンダ N-BOX", carClass: "軽", yani: true, amount: 22000, payment: "決済済み", desire: "2026-06-15", desireTime: "午前（9:00〜12:00）", status: "施工店確認中", contractorId: 3, scheduled: null, note: "タバコ臭" },
+  { id: "SO-0006", date: "2026-06-07", shopId: 2, customer: "三浦 様", customerTel: "070-5555-6666", customerPref: "埼玉県", customerCity: "大宮区", car: "日産 セレナ", carClass: "ワンボックス", yani: false, amount: 22000, payment: "決済済み", desire: "2026-06-14", desireTime: "午後早め（12:00〜15:00）", status: "施工日確定", contractorId: 1, scheduled: "2026-06-14", note: "" },
   { id: "SO-0005", date: "2026-06-03", shopId: 1, customer: "原田 様", customerTel: "090-7777-8888", customerPref: "茨城県", customerCity: "つくば市", car: "スバル フォレスター", carClass: "普通", yani: false, amount: 19800, payment: "決済済み", desire: "2026-06-08", status: "施工完了", completedAt: "2026-06-08", contractorId: 2, scheduled: "2026-06-08", note: "" },
   { id: "SO-0004", date: "2026-05-28", shopId: 5, customer: "村上 様", customerTel: "080-9999-0000", customerPref: "兵庫県", customerCity: "神戸市", car: "マツダ CX-5", carClass: "普通", yani: true, amount: 25300, payment: "決済済み", desire: "2026-06-02", status: "施工完了", completedAt: "2026-06-02", contractorId: 3, scheduled: "2026-06-02", note: "" },
   { id: "SO-0003", date: "2026-05-20", shopId: 3, customer: "石川 様", customerTel: "090-1212-3434", customerPref: "神奈川県", customerCity: "横浜市", car: "トヨタ プリウス", carClass: "普通", yani: false, amount: 19800, payment: "決済済み", desire: "2026-05-26", status: "施工完了", completedAt: "2026-05-26", contractorId: 1, scheduled: "2026-05-26", note: "" },
@@ -342,10 +346,10 @@ function orderableProducts() { return products.filter(p => p.published); }
 let supplyOrders = [
   // 1注文に複数商品を含められる（lines）。送料は注文全体の商品代で判定する
   { id: "PO-0005", date: "2026-06-09", contractorId: 1, lines: [{ productId: 2, qty: 6 }], status: "受注", paid: "未入金" },
-  { id: "PO-0004", date: "2026-06-05", contractorId: 3, lines: [{ productId: 1, qty: 12 }, { productId: 2, qty: 5 }], status: "出荷済", paid: "入金済" },
-  { id: "PO-0003", date: "2026-05-22", contractorId: 2, lines: [{ productId: 1, qty: 10 }], status: "出荷済", paid: "入金済" },
-  { id: "PO-0002", date: "2026-05-15", contractorId: 1, lines: [{ productId: 1, qty: 20 }], status: "出荷済", paid: "未入金" },
-  { id: "PO-0001", date: "2026-05-01", contractorId: 4, lines: [{ productId: 3, qty: 8 }], status: "出荷済", paid: "入金済" },
+  { id: "PO-0004", date: "2026-06-05", contractorId: 3, lines: [{ productId: 1, qty: 12 }, { productId: 2, qty: 5 }], status: "出荷済", paid: "入金済", shippedAt: "2026-06-06", deliveryNoteId: "DN-202606-001" },
+  { id: "PO-0003", date: "2026-05-22", contractorId: 2, lines: [{ productId: 1, qty: 10 }], status: "出荷済", paid: "入金済", shippedAt: "2026-05-23", deliveryNoteId: "DN-202605-002" },
+  { id: "PO-0002", date: "2026-05-15", contractorId: 1, lines: [{ productId: 1, qty: 20 }], status: "出荷済", paid: "未入金", shippedAt: "2026-05-16", deliveryNoteId: "DN-202605-001" },
+  { id: "PO-0001", date: "2026-05-01", contractorId: 4, lines: [{ productId: 3, qty: 8 }], status: "出荷済", paid: "入金済", shippedAt: "2026-05-02", deliveryNoteId: "DN-202605-000" },
 ];
 
 // 本部在庫の入出庫履歴（入庫・出荷・調整）。qty は増減（出荷はマイナス）、after は処理後の在庫
@@ -508,6 +512,7 @@ const NAVS = {
   shop: [
     { id: "shop-form", icon: "📝", label: "注文フォーム（QR）" },
     { id: "shop-orders", icon: "🛎️", label: "取次履歴" },
+    { id: "shop-qr", icon: "📱", label: "専用QRコード" },
   ],
 };
 
@@ -540,7 +545,7 @@ function buildUI() {
 
 function renderAll() {
   if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqSales(); renderHqPayment(); renderHqInvoice(); renderHqOp(); renderHqShop(); renderHqContract(); renderHqCars(); }
-  if (session.role === "shop") { renderShopForm(); renderShopOrders(); }
+  if (session.role === "shop") { renderShopForm(); renderShopOrders(); renderShopQr(); }
   if (session.role === "op") { renderOpDash(); renderOpJobs(); renderOpShop(); renderOpPo(); renderOpContract(); }
 }
 
@@ -562,7 +567,7 @@ function renderHqDash() {
   serviceOrders.filter(o => o.status === "施工店確認中").forEach(o =>
     alerts.push(`<div class="alert alert-warn">⏳ <b>${o.id}</b> は ${opById(o.contractorId).name} の対応可否を確認中です。</div>`));
   supplyOrders.filter(o => o.status === "受注").forEach(o =>
-    alerts.push(`<div class="alert alert-info">🧴 消耗品注文 <b>${o.id}</b>（${opById(o.contractorId).name}）が出荷待ちです。</div>`));
+    alerts.push(`<div class="alert alert-info">🧴 消耗品注文 <b>${o.id}</b>（${opById(o.contractorId).name}）が出荷待ちです。${canShip(o) ? "出荷できます。" : `<b>${shipBlockReason(o)}</b>`}</div>`));
   invoices.filter(i => i.status === "作成済み").forEach(i =>
     alerts.push(`<div class="alert alert-warn">🧾 請求書 <b>${i.id}</b>（${payeeName(i)}）は作成済みですが、まだ送付していません。</div>`));
 
@@ -609,7 +614,7 @@ function renderHqSo() {
               <td>${shopById(o.shopId).name}</td>
               <td>${o.customer}</td><td>${o.customerPref}${o.customerCity}</td><td>${o.car}</td>
               <td>${o.carClass || "—"}${o.yani ? "＋やに" : ""}<br><span style="font-size:11px;color:var(--muted)">${yen(o.amount)} ${paymentBadge(o.payment)}</span></td>
-              <td>${o.desire}</td>
+              <td>${desireHtml(o)}</td>
               <td>${o.contractorId ? opById(o.contractorId).name : `<span style="color:var(--danger)">未割り当て</span>`}</td>
               <td>${soBadge(o.status)}</td>
               <td>${hqSoAction(o)}</td>
@@ -695,6 +700,7 @@ function showSoDetail(soId) {
         ${done ? "" : '<div style="color:var(--muted);margin-top:4px">※ キャンセル・返金の可能性があるため、施工完了となるまで支払対象にはなりません。</div>'}
       </div></div>`; })()}
       <div class="detail-item"><div class="k">希望日 / 確定日</div><div class="v">${o.desire} / ${o.scheduled || "未確定"}</div></div>
+      <div class="detail-item"><div class="k">訪問の希望時間</div><div class="v">${o.desireTime || "指定なし"}</div></div>
       <div class="detail-item"><div class="k">施工代理店</div><div class="v">${o.contractorId ? opById(o.contractorId).name : "未割り当て"}</div></div>
       <div class="detail-item" style="grid-column:1/-1"><div class="k">施工前確認</div>
         <div class="v">
@@ -717,6 +723,7 @@ function renderHqPo() {
     <div class="page-title">消耗品受発注管理</div>
     <div class="page-desc">施工代理店からの除菌消臭剤などの注文と、本部在庫を管理します（表示金額はすべて税込）</div>
     <div class="alert alert-shipping">🚚 送料：${yen(SHIPPING.freeThreshold)}以上は無料 / ${yen(SHIPPING.freeThreshold)}未満は ${yen(SHIPPING.fee)}<small>施工代理店・取次店の注文画面にも同じ案内が出ます</small></div>
+    <div class="alert alert-info" style="font-size:12px">📋 出荷の手順：<b>① 請求書を作成 → ② 送付済みにする → ③ 出荷済にする</b>。請求書を送付するまで「出荷済にする」は押せません（請求書より先に商品が届くと照合が混乱するため）。出荷済にすると<b>納品書が自動作成</b>されます。</div>
     ${(() => {
       const shipped = supplyOrders.filter(o => o.status === "出荷済"), unshipped = supplyOrders.filter(o => o.status !== "出荷済");
       const sum = l => l.reduce((s, o) => s + (poAmount(o) || 0), 0);
@@ -774,26 +781,50 @@ function renderHqPo() {
                 <td>${paidBadge(o.paid)}</td><td>${poBadge(o.status)}</td>
                 <td>${invoiceCellHtml(o)}</td>
                 <td style="white-space:nowrap">
-                  ${o.status === "受注" ? `<button class="btn btn-primary btn-sm" onclick="shipPo('${o.id}')">出荷済にする</button>` : ""}
+                  ${o.status === "受注" ? (canShip(o)
+                    ? `<button class="btn btn-primary btn-sm" onclick="shipPo('${o.id}')">出荷済にする</button>`
+                    : `<button class="btn btn-ghost btn-sm" disabled title="${shipBlockReason(o)}">出荷済にする</button><br><span style="font-size:11px;color:var(--danger)">🔒 ${shipBlockReason(o)}</span>`) : ""}
+                  ${o.deliveryNoteId ? `<button class="btn btn-ghost btn-sm" onclick="openDeliveryNote('${o.id}')">📦 納品書</button>` : ""}
                   ${o.paid !== "入金済" ? `<button class="btn btn-success btn-sm" onclick="markPoPaid('${o.id}')">入金済にする</button>` : ""}
-                  ${o.status !== "受注" && o.paid === "入金済" ? "—" : ""}
                 </td>
               </tr>`).join("") || `<tr><td colspan="12" style="color:var(--muted)">条件に合う注文がありません</td></tr>`}
           </tbody>
         </table>
       </div>`; })()}`;
 }
+// 出荷できるのは、請求書を作成して「送付済み」（または入金済）にした注文だけ。
+// 請求書を送る前に商品だけ届くと、施工代理店・本部の双方で照合が混乱するため。
+function canShip(o) {
+  const inv = o.invoiceId ? invoiceById(o.invoiceId) : null;
+  return !!inv && (inv.status === "送付済み" || inv.status === "入金済");
+}
+function shipBlockReason(o) {
+  const inv = o.invoiceId ? invoiceById(o.invoiceId) : null;
+  if (!inv) return "請求書が未作成です。先に「請求書を作成」→ 送付済みにしてください";
+  if (inv.status === "作成済み") return `請求書 ${inv.id} が未送付です。送付済みにすると出荷できます`;
+  return "";
+}
+// 納品書番号（仮：DN-年月-連番）。正式ルールが決まり次第ここを差し替える
+function nextDeliveryNoteNumber(dateStr) {
+  const ym = (dateStr || TODAY).slice(0, 7).replace("-", "");
+  const n = supplyOrders.filter(o => (o.deliveryNoteId || "").startsWith("DN-" + ym + "-")).length + 1;
+  return `DN-${ym}-${String(n).padStart(3, "0")}`;
+}
 function shipPo(poId) {
   const o = supplyOrders.find(x => x.id === poId);
+  if (!canShip(o)) { alert(shipBlockReason(o)); return; }
   const short = o.lines.filter(l => prodById(l.productId).stock < l.qty).map(l => { const p = prodById(l.productId); return `${p.name}（在庫 ${p.stock} ${p.unit}、注文 ${l.qty} ${p.unit}）`; });
   if (short.length && !confirm(`在庫が不足しています：${short.join("、")}。このまま出荷済にしますか？`)) return;
   o.status = "出荷済";
+  o.shippedAt = TODAY;
+  o.deliveryNoteId = nextDeliveryNoteNumber(TODAY); // 出荷と同時に納品書を自動作成
   o.lines.forEach(l => {
     const p = prodById(l.productId);
     p.stock = Math.max(0, p.stock - l.qty);
     stockLogs.unshift({ date: TODAY, productId: p.id, type: "出荷", qty: -l.qty, after: p.stock, note: `${o.id} ${opById(o.contractorId).name}` });
   });
   renderAll();
+  openDeliveryNote(o.id);
 }
 
 // ---------- 在庫登録（入庫・在庫数の修正） ----------
@@ -859,8 +890,60 @@ function showQr(shopId) {
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">閉じる</button>
-      <button class="btn btn-primary" onclick="alert('モックのため印刷は省略しています')">🖨 印刷用シートを出力</button>
+      <button class="btn btn-primary" onclick="openQrPrintSheet(${s.id})">🖨 印刷用シートを出力</button>
     </div>`);
+}
+// 店頭掲示用の印刷シート（本部・施工代理店・取次店の各画面から共通で使う）
+function qrSheetHtml(s) {
+  const c = opById(s.contractorId);
+  return `
+    <div class="invoice-doc" style="text-align:center">
+      <h1 style="letter-spacing:.1em">車の除菌消臭 お申し込みはこちら</h1>
+      <div style="font-size:14px;margin-bottom:14px">スマートフォンでQRコードを読み取ると、申し込みフォームが開きます</div>
+      <div style="display:inline-block;padding:18px;border:2px solid #222;border-radius:12px;background:#fff">
+        <svg width="220" height="220" viewBox="0 0 29 29" style="display:block"><rect width="29" height="29" fill="#fff"/>${mockQrSvg(s.id)}</svg>
+      </div>
+      <div style="margin-top:14px;font-size:12px;color:#444">https://（システムURL）/order?shop=<b>${s.code}</b></div>
+      <div style="margin-top:18px;font-size:15px"><b>取次店：${s.name}</b>（${s.code}）</div>
+      <div style="font-size:12px;color:#444">担当施工代理店：${c ? c.name : "—"}</div>
+      <div class="inv-issuer" style="margin-top:22px"><div><b>${ISSUER.name}</b></div><div>${ISSUER.address}　TEL ${ISSUER.tel}</div></div>
+    </div>`;
+}
+function openQrPrintSheet(shopId) {
+  const s = shopById(shopId);
+  openModal(`
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <h2 style="margin:0">QRコード 印刷用シート</h2>
+      <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 印刷 / PDF保存</button>
+    </div>
+    ${qrSheetHtml(s)}
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">閉じる</button></div>`);
+}
+function renderShopQr() {
+  const el = $("page-shop-qr"); if (!el) return;
+  const s = shopById(session.entityId);
+  const c = opById(s.contractorId);
+  el.innerHTML = `
+    <div class="page-title">専用QRコード</div>
+    <div class="page-desc">${s.name} 専用の申し込みQRコードです。店頭に掲示してお客さまに読み取っていただきます</div>
+    <div class="cards-row">
+      <div class="card" style="text-align:center">
+        <div style="display:inline-block;padding:16px;border:1px solid var(--border);border-radius:12px;background:#fff">
+          <svg width="180" height="180" viewBox="0 0 29 29" style="display:block"><rect width="29" height="29" fill="#fff"/>${mockQrSvg(s.id)}</svg>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--muted)">https://（システムURL）/order?shop=<b style="color:var(--primary)">${s.code}</b></div>
+        <div style="margin-top:12px"><button class="btn btn-primary" onclick="openQrPrintSheet(${s.id})">🖨 印刷用シートを出力</button></div>
+      </div>
+      <div class="card">
+        <div class="stat-label">このQRの紐づけ</div>
+        <div class="detail-grid" style="margin-top:8px">
+          <div class="detail-item"><div class="k">取次店</div><div class="v">${s.name}（${s.code}）</div></div>
+          <div class="detail-item"><div class="k">担当施工代理店</div><div class="v">${c ? c.name : "—"}</div></div>
+          <div class="detail-item"><div class="k">状態</div><div class="v">${s.status}</div></div>
+        </div>
+        <div class="alert alert-info" style="font-size:12px;margin-top:12px">お客さまがこのQRから申し込むと、取次店として ${s.name} が自動でセットされ、取次の実績とコミッションがこの店に紐づきます。QRは店舗ごとに固有なので、他店のQRを使い回さないでください。</div>
+      </div>
+    </div>`;
 }
 function mockQrSvg(seed) {
   // モック用の擬似QRパターン（実際はQRライブラリで生成）
@@ -1426,6 +1509,52 @@ function renderInvoiceDocument(inv) {
       </div>
     </div>`;
 }
+// ---------- 納品書（出荷時に自動作成。フォーマットは本部から受領後に差し替える） ----------
+function renderDeliveryNoteDocument(o) {
+  const inv = o.invoiceId ? invoiceById(o.invoiceId) : null;
+  return `
+    <div class="invoice-doc">
+      <h1>納品書</h1>
+      <div class="inv-head">
+        <div>
+          <div class="inv-to">${opById(o.contractorId).name} 御中</div>
+          <div style="font-size:12px;margin-top:6px">下記のとおり納品いたしました。</div>
+        </div>
+        <div class="inv-meta">
+          <div>納品書番号：<b>${o.deliveryNoteId}</b></div>
+          <div>出荷日：${o.shippedAt || "—"}</div>
+          <div>ご注文番号：${o.id}（${o.date}）</div>
+          ${inv ? `<div>請求書番号：${inv.id}</div>` : ""}
+        </div>
+      </div>
+      <table>
+        <thead><tr><th style="width:50%">品名</th><th>数量</th><th>単価（税込）</th><th>金額（税込）</th></tr></thead>
+        <tbody>
+          ${o.lines.map(l => { const p = prodById(l.productId); return `<tr><td>${p.name}</td><td class="num">${l.qty} ${p.unit}</td><td class="num">${yen(p.price)}</td><td class="num">${yen(p.price * l.qty)}</td></tr>`; }).join("")}
+          <tr><td>送料</td><td class="num">—</td><td class="num">—</td><td class="num">${yen(shippingFee(poSubtotal(o) || 0))}</td></tr>
+          <tr><td colspan="3" style="text-align:right"><b>合計（税込）</b></td><td class="num"><b>${yen(poAmount(o))}</b></td></tr>
+        </tbody>
+      </table>
+      <div class="inv-note">※ 商品到着後、内容・数量をご確認ください。相違がある場合は本部までご連絡ください。</div>
+      <div class="inv-issuer">
+        <div><b>${ISSUER.name}</b></div>
+        <div>${ISSUER.address}　TEL ${ISSUER.tel}</div>
+        <div>${ISSUER.regNo}</div>
+      </div>
+    </div>`;
+}
+function openDeliveryNote(poId) {
+  const o = supplyOrders.find(x => x.id === poId);
+  if (!o.deliveryNoteId) { alert("この注文はまだ出荷していないため納品書はありません"); return; }
+  openModal(`
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <h2 style="margin:0">納品書 ${o.deliveryNoteId}</h2>
+      <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 印刷 / PDF保存</button>
+    </div>
+    <div class="alert alert-info" style="font-size:12px">出荷済にした時点で自動作成されます。商品に同梱するか、PDFで送付してください。</div>
+    ${renderDeliveryNoteDocument(o)}
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">閉じる</button></div>`);
+}
 function openInvoicePreview(id) {
   const inv = invoiceById(id);
   openModal(`
@@ -1603,7 +1732,9 @@ function renderOpDash() {
   el.innerHTML = `
     <div class="page-title">ダッシュボード</div>
     <div class="page-desc">${c.name} — 自社が開拓した取次店と、担当した施工案件の状況を確認できます（他の施工代理店の情報は見えません）</div>
+    ${(() => { const n = myJobs.filter(o => o.status === "施工店確認中").length; return `
     <div class="cards-row">
+      <div class="card" style="${n ? "border:2px solid var(--danger)" : ""}"><div class="stat-label">施工可否の確認依頼</div><div class="stat-value" style="color:${n ? "var(--danger)" : "inherit"}">${n}<span style="font-size:14px"> 件</span></div><div class="stat-sub">${n ? `<span class="link" onclick="document.querySelector('[data-page=op-jobs]').click()">施工案件で「対応できる／対応不可」を回答 →</span>` : "未回答の依頼はありません"}</div></div>`; })()}
       <div class="card"><div class="stat-label">開拓した取次店</div><div class="stat-value">${ms.length}<span style="font-size:14px"> 店</span></div><div class="stat-sub">目標 ${c.target} 店 / 稼働中 ${ms.filter(s => s.status === "稼働中").length} 店</div></div>
       <div class="card"><div class="stat-label">自社取次店からの取次</div><div class="stat-value">${shopOrders.length}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工完了 ${shopOrders.filter(o => o.status === "施工完了").length} 件</div></div>
       <div class="card"><div class="stat-label">担当した施工案件</div><div class="stat-value">${myJobs.length}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工完了 ${doneJobs.length} 件</div></div>
@@ -1743,6 +1874,10 @@ function renderShopForm() {
           <div class="form-group"><label>施工希望日</label><input type="date" id="cf-date" min="${addBusinessDays(TODAY, 3)}" value="${addBusinessDays(TODAY, 3)}">
             <small style="color:var(--muted);font-size:11px">申込日から3営業日後（土日祝を除く）以降からお選びいただけます</small>
           </div>
+          <div class="form-group"><label>訪問の希望時間</label>
+            <select id="cf-time">${DESIRE_TIMES.map(t => `<option value="${t}">${t}</option>`).join("")}</select>
+            <small style="color:var(--muted);font-size:11px">施工代理店が日程調整の参考にします（確約ではありません）</small>
+          </div>
           <div class="form-group"><label>気になる点（任意）</label><textarea id="cf-note" rows="2" placeholder="例）タバコ臭・ペット臭など"></textarea></div>
         </div>
         <div id="cf-price" class="price-box"></div>
@@ -1826,7 +1961,7 @@ function confirmPayment() {
     customer: $("cf-name").value.trim() + " 様", customerTel: $("cf-tel").value.trim(),
     customerPref: $("cf-pref").value, customerCity: $("cf-city").value.trim(), car: $("cf-car").value.trim(),
     carClass: a.cls, yani: a.yani, amount: a.total, payment: "決済済み",
-    desire: $("cf-date").value, status: "新規受付", contractorId: null, scheduled: null,
+    desire: $("cf-date").value, desireTime: $("cf-time").value, status: "新規受付", contractorId: null, scheduled: null,
     note: $("cf-note").value,
   });
   renderAll();
@@ -1872,7 +2007,7 @@ function renderShopOrders() {
       <table>
         <thead><tr>${thSort(K, "id", "受付番号", R)}${thSort(K, "date", "受付日", R)}<th>お客さま</th><th>施工場所</th><th>車種</th><th>区分</th>${thSort(K, "amount", "金額", R)}<th>受取見込み</th>${thSort(K, "payment", "決済", R)}${thSort(K, "desire", "希望日", R)}${thSort(K, "status", "状況", R)}</tr></thead>
         <tbody>
-          ${rows.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.customerPref}${o.customerCity}</td><td>${o.car}</td><td>${o.carClass || "—"}${o.yani ? '<br><span style="font-size:11px;color:var(--muted)">＋やにとり</span>' : ""}</td><td>${yen(o.amount)}</td><td>${o.status === "施工完了" ? `<b>${yen(shopPayout(o.amount))}</b>` : `<span style="color:var(--muted)">${yen(shopPayout(o.amount))}<br><span style="font-size:10px">（完了後に確定）</span></span>`}</td><td>${paymentBadge(o.payment)}</td><td>${o.desire}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="11" style="color:var(--muted)">${list.length ? "条件に合う取次がありません" : "取次はまだありません"}</td></tr>`}
+          ${rows.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.customerPref}${o.customerCity}</td><td>${o.car}</td><td>${o.carClass || "—"}${o.yani ? '<br><span style="font-size:11px;color:var(--muted)">＋やにとり</span>' : ""}</td><td>${yen(o.amount)}</td><td>${o.status === "施工完了" ? `<b>${yen(shopPayout(o.amount))}</b>` : `<span style="color:var(--muted)">${yen(shopPayout(o.amount))}<br><span style="font-size:10px">（完了後に確定）</span></span>`}</td><td>${paymentBadge(o.payment)}</td><td>${desireHtml(o)}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="11" style="color:var(--muted)">${list.length ? "条件に合う取次がありません" : "取次はまだありません"}</td></tr>`}
         </tbody>
       </table>
     </div>`;
@@ -1905,7 +2040,7 @@ function renderOpJobs() {
   el.innerHTML = `
     <div class="page-title">施工案件</div>
     <div class="page-desc">本部から割り当てられた案件です。対応可否の回答と施工完了の報告を行います</div>
-    ${pending.map(o => `<div class="alert alert-warn">⏳ <b>${o.id}</b>（${o.customerPref}${o.customerCity} / ${o.car} / 希望日 ${o.desire}）の対応可否を回答してください。</div>`).join("")}
+    ${pending.map(o => `<div class="alert alert-warn">⏳ <b>${o.id}</b>（${o.customerPref}${o.customerCity} / ${o.car} / 希望日 ${o.desire}${o.desireTime && o.desireTime !== "指定なし" ? ` ${o.desireTime}` : ""}）の対応可否を回答してください。</div>`).join("")}
     <div class="alert alert-info" style="font-size:12px">💡 キャンセル・返金の可能性があるため、受取見込み額は<b>「施工完了」となった案件のみ</b>で計算しています。施工中・確認中の案件は完了後に反映されます。</div>
     <div class="cards-row">
       <div class="card"><div class="stat-label">${monthLabel(thisMonth)} 施工完了分の合計金額</div><div class="stat-value">${yen(tDone.amount)}</div><div class="stat-sub">${doneList.length}件（施工中・未完了 ${notDoneList.length}件・${yen(notDoneTotal)}は含まず）<br>※ 過去の月は下の「月別の実績」で確認</div></div>
@@ -1945,7 +2080,7 @@ function renderOpJobs() {
               <td>${o.car}<br><span style="font-size:11px;color:var(--muted)">${o.carClass || "—"}${o.yani ? "＋やに" : ""}</span></td>
               <td>${yen(o.amount)}</td>
               <td>${o.status === "施工完了" ? `<b>${yen(contractorPayout(o.amount))}</b>` : `<span style="color:var(--muted)">${yen(contractorPayout(o.amount))}<br><span style="font-size:10px">（完了後に確定）</span></span>`}</td>
-              <td>${o.desire}</td><td>${o.scheduled || "—"}</td><td>${soBadge(o.status)}</td>
+              <td>${desireHtml(o)}</td><td>${o.scheduled || "—"}</td><td>${soBadge(o.status)}</td>
               <td>${opJobAction(o)}</td>
             </tr>`).join("") || `<tr><td colspan="12" style="color:var(--muted)">${list.length ? "条件に合う案件がありません" : "割り当てられた案件はありません"}</td></tr>`}
         </tbody>
@@ -2053,7 +2188,7 @@ function renderOpPo() {
       <table>
         <thead><tr><th>注文番号</th><th>注文日</th><th>商品</th><th>数量</th><th>商品代</th><th>送料</th><th>合計</th><th>入金</th><th>状況</th></tr></thead>
         <tbody>
-          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td style="font-size:12px">${poLinesHtml(o)}</td><td>${poQtyTotal(o)}</td><td>${yen(poSubtotal(o))}</td><td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td><td><b>${yen(poAmount(o))}</b></td><td>${paidBadge(o.paid)}</td><td>${opPoBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--muted)">注文履歴はありません</td></tr>`}
+          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td style="font-size:12px">${poLinesHtml(o)}</td><td>${poQtyTotal(o)}</td><td>${yen(poSubtotal(o))}</td><td>${poSubtotal(o) == null ? "—" : (shippingFee(poSubtotal(o)) === 0 ? "無料" : yen(shippingFee(poSubtotal(o))))}</td><td><b>${yen(poAmount(o))}</b></td><td>${paidBadge(o.paid)}</td><td>${opPoBadge(o.status)}${o.deliveryNoteId ? `<br><span class="link" style="font-size:11px" onclick="openDeliveryNote('${o.id}')">📦 納品書 ${o.deliveryNoteId}</span>` : ""}</td></tr>`).join("") || `<tr><td colspan="9" style="color:var(--muted)">注文履歴はありません</td></tr>`}
         </tbody>
       </table>
     </div>`;
