@@ -312,6 +312,8 @@ const SO_STATUS = ["新規受付", "施工店確認中", "施工日確定", "施
 // customerPref/customerCity: 施工現場（お客さま宅など）の住所。施工代理店の割り当ては、
 // 取次店の所在地ではなくこちらを起点に距離判定する（取次店と施工現場は別の都道府県のこともある）。
 let serviceOrders = [
+  // SO-0009：取次店は施工代理店2（つくば）の開拓店だが、施工は施工代理店1が担当（「他社取次店」からの案件の例）
+  { id: "SO-0009", date: "2026-06-11", shopId: 1, customer: "村田 様", customerTel: "090-9999-0000", customerPref: "埼玉県", customerCity: "春日部市", car: "ダイハツ タント", carClass: "軽", yani: false, amount: 16500, payment: "決済済み", desire: "2026-06-19", status: "施工日確定", contractorId: 1, scheduled: "2026-06-19", note: "" },
   { id: "SO-0008", date: "2026-06-10", shopId: 1, customer: "斎藤 様", customerTel: "090-1111-2222", customerPref: "千葉県", customerCity: "船橋市", car: "トヨタ アルファード", carClass: "ワンボックス", yani: false, amount: 22000, payment: "決済済み", desire: "2026-06-18", status: "新規受付", contractorId: null, scheduled: null, note: "ペット臭が気になるとのこと" },
   { id: "SO-0007", date: "2026-06-09", shopId: 4, customer: "岡本 様", customerTel: "080-3333-4444", customerPref: "京都府", customerCity: "京都市伏見区", car: "ホンダ N-BOX", carClass: "軽", yani: true, amount: 22000, payment: "決済済み", desire: "2026-06-15", status: "施工店確認中", contractorId: 3, scheduled: null, note: "タバコ臭" },
   { id: "SO-0006", date: "2026-06-07", shopId: 2, customer: "三浦 様", customerTel: "070-5555-6666", customerPref: "埼玉県", customerCity: "大宮区", car: "日産 セレナ", carClass: "ワンボックス", yani: false, amount: 22000, payment: "決済済み", desire: "2026-06-14", status: "施工日確定", contractorId: 1, scheduled: "2026-06-14", note: "" },
@@ -1606,12 +1608,31 @@ function renderOpDash() {
       <div class="card"><div class="stat-label">自社取次店からの取次</div><div class="stat-value">${shopOrders.length}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工完了 ${shopOrders.filter(o => o.status === "施工完了").length} 件</div></div>
       <div class="card"><div class="stat-label">担当した施工案件</div><div class="stat-value">${myJobs.length}<span style="font-size:14px"> 件</span></div><div class="stat-sub">施工完了 ${doneJobs.length} 件</div></div>
     </div>
+    ${(() => {
+      const K = "opdash", R = "renderOpDash";
+      const isMine = o => shopById(o.shopId).contractorId === session.entityId;
+      const G = { id: o => o.id, date: o => o.date, year: o => (o.date || "").slice(0, 4), month: o => monthOf(o.date), shop: o => shopById(o.shopId).name,
+                  mine: o => isMine(o) ? "自社取次店" : "他社取次店", car: o => o.car, amount: o => o.amount || 0, status: o => o.status, scheduled: o => o.scheduled || "" };
+      const years = [...new Set(myJobs.map(G.year))].sort().reverse();
+      const yearSel = ts(K).filters.year || "";
+      const months = [...new Set(myJobs.filter(o => !yearSel || G.year(o) === yearSel).map(G.month))].sort().reverse();
+      const rows = applyTable(K, myJobs, G);
+      return `
     <div class="card">
-      <div class="section-title" style="margin-top:0">自社取次店の最近の取次</div>
-      <table><thead><tr><th>受付日</th><th>取次店</th><th>車種</th><th>金額</th><th>状況</th></tr></thead><tbody>
-        ${shopOrders.slice(0, 6).map(o => `<tr><td>${o.date}</td><td>${shopById(o.shopId).name}</td><td>${o.car}</td><td>${yen(o.amount)}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="5" style="color:var(--muted)">取次はまだありません</td></tr>`}
+      <div class="section-title" style="margin-top:0">取次店からの施工履歴</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">自社が担当した施工案件です。自社で開拓した取次店からの案件は「自社取次店」、他の施工代理店の取次店から本部経由で割り当てられた案件は「他社取次店」と表示します。</div>
+      <div class="filters" style="margin-bottom:8px">
+        ${filterSelect(K, "year", "年", years.map(y => ({ value: y, label: y + "年" })), R)}
+        ${filterSelect(K, "month", "月", months.map(m => ({ value: m, label: monthLabel(m) })), R)}
+        ${filterSelect(K, "mine", "取次店", ["自社取次店", "他社取次店"], R)}
+        ${filterSelect(K, "status", "状況", ["施工店確認中", "施工日確定", "施工前確認済み", "施工完了"], R)}
+        ${filterSummary(K, R, rows.length, myJobs.length)}
+        <span style="font-size:11px;color:var(--muted)">※ 見出しをクリックすると昇順⇄降順で並べ替え</span>
+      </div>
+      <table><thead><tr>${thSort(K, "date", "受付日", R)}${thSort(K, "shop", "取次店", R)}${thSort(K, "mine", "自社／他社", R)}<th>車種</th>${thSort(K, "amount", "金額", R)}${thSort(K, "scheduled", "確定日", R)}${thSort(K, "status", "状況", R)}</tr></thead><tbody>
+        ${rows.map(o => `<tr><td>${o.date}</td><td>${shopById(o.shopId).name}</td><td><span class="badge ${isMine(o) ? "b-green" : "b-gray"}">${G.mine(o)}</span></td><td>${o.car}</td><td>${yen(o.amount)}</td><td>${o.scheduled || "—"}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="7" style="color:var(--muted)">${myJobs.length ? "条件に合う案件がありません" : "施工案件はまだありません"}</td></tr>`}
       </tbody></table>
-    </div>`;
+    </div>`; })()}`;
 }
 
 function renderOpShop() {
