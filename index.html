@@ -1818,25 +1818,40 @@ function confirmPayment() {
 function renderShopOrders() {
   const el = $("page-shop-orders"); if (!el) return;
   const list = serviceOrders.filter(o => o.shopId === session.entityId);
-  const doneList = completedOnly(list);
-  const notDoneList = notCompletedOnly(list);
+  // 上部の集計は「当月」のみ（確定分は施工完了日の月、未完了分は受付日の月）。過去分は下の「月別の実績」で見る
+  const thisMonth = monthOf(TODAY);
+  const doneList = completedOnly(list).filter(o => completionMonthOf(o) === thisMonth);
+  const notDoneList = notCompletedOnly(list).filter(o => monthOf(o.date) === thisMonth);
   const tDone = splitTotal(doneList);
   const notDoneTotal = notDoneList.reduce((s, o) => s + (o.amount || 0), 0);
+  const K = "shoporders", R = "renderShopOrders";
+  const G = { id: o => o.id, date: o => o.date, amount: o => o.amount || 0, desire: o => o.desire || "", status: o => o.status, payment: o => o.payment || "",
+              done: o => o.status === "施工完了" ? "施工完了" : "未施工", month: o => monthOf(o.date) };
+  const months = [...new Set(list.map(G.month))].sort().reverse();
+  const rows = applyTable(K, list, G);
   el.innerHTML = `
     <div class="page-title">取次履歴</div>
     <div class="page-desc">自店経由の申し込みと進捗を確認できます（他店の情報は見えません）</div>
     <div class="alert alert-info" style="font-size:12px">💡 キャンセル・返金の可能性があるため、受取見込み額は<b>「施工完了」となった案件のみ</b>で計算しています。施工中・確認中の案件は完了後に反映されます。</div>
     <div class="cards-row">
-      <div class="card"><div class="stat-label">施工完了分の取次金額</div><div class="stat-value">${yen(tDone.amount)}</div><div class="stat-sub">${doneList.length}件（施工中・未完了 ${notDoneList.length}件・${yen(notDoneTotal)}は含まず）</div></div>
-      <div class="card"><div class="stat-label">受取見込み額</div><div class="stat-value" style="color:var(--primary-dark)">${yen(tDone.shop)}</div><div class="stat-sub">決済手数料 ${yen(tDone.fee)} を引いた額の ${(commissionSettings.shopRate * 100).toFixed(0)}%${commissionSettings.paymentFeeConfirmed ? "" : "<br>※ 手数料率は決済代行会社が決まるまで仮の値です"}</div></div>
+      <div class="card"><div class="stat-label">${monthLabel(thisMonth)} 施工完了分の取次金額</div><div class="stat-value">${yen(tDone.amount)}</div><div class="stat-sub">${doneList.length}件（施工中・未完了 ${notDoneList.length}件・${yen(notDoneTotal)}は含まず）<br>※ 過去の月は下の「月別の実績」で確認</div></div>
+      <div class="card"><div class="stat-label">${monthLabel(thisMonth)} 受取見込み額</div><div class="stat-value" style="color:var(--primary-dark)">${yen(tDone.shop)}</div><div class="stat-sub">決済手数料 ${yen(tDone.fee)} を引いた額の ${(commissionSettings.shopRate * 100).toFixed(0)}%${commissionSettings.paymentFeeConfirmed ? "" : "<br>※ 手数料率は決済代行会社が決まるまで仮の値です"}</div></div>
     </div>
     ${monthlyTableHtml(list, "shop")}
     <div class="alert alert-info" style="font-size:12px">※ 「金額」はお客さまからお預かりした施工料金（税込）です。「受取見込み」は、そこから決済代行会社の手数料（現在 ${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "・仮"}）を引いた金額の ${(commissionSettings.shopRate * 100).toFixed(0)}%（本部${(commissionSettings.hqRate * 100).toFixed(0)}%／取次店${(commissionSettings.shopRate * 100).toFixed(0)}%／施工代理店${(commissionSettings.contractorRate * 100).toFixed(0)}%）です。お支払いは施工完了の月を月末締めの翌月払いです。</div>
+    <div class="filters">
+      ${filterSelect(K, "done", "施工", ["未施工", "施工完了"], R)}
+      ${filterSelect(K, "status", "状況", ["新規受付", "施工店確認中", "施工日確定", "施工前確認済み", "施工完了"], R)}
+      ${filterSelect(K, "payment", "決済", [...new Set(list.map(G.payment))].filter(v => v).sort(), R)}
+      ${filterSelect(K, "month", "受付月", months.map(m => ({ value: m, label: monthLabel(m) })), R)}
+      ${filterSummary(K, R, rows.length, list.length)}
+      <span style="font-size:11px;color:var(--muted)">※ 受付日・希望日などの見出しをクリックすると昇順⇄降順で並べ替え</span>
+    </div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>受付番号</th><th>受付日</th><th>お客さま</th><th>施工場所</th><th>車種</th><th>区分</th><th>金額</th><th>受取見込み</th><th>決済</th><th>希望日</th><th>状況</th></tr></thead>
+        <thead><tr>${thSort(K, "id", "受付番号", R)}${thSort(K, "date", "受付日", R)}<th>お客さま</th><th>施工場所</th><th>車種</th><th>区分</th>${thSort(K, "amount", "金額", R)}<th>受取見込み</th>${thSort(K, "payment", "決済", R)}${thSort(K, "desire", "希望日", R)}${thSort(K, "status", "状況", R)}</tr></thead>
         <tbody>
-          ${list.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.customerPref}${o.customerCity}</td><td>${o.car}</td><td>${o.carClass || "—"}${o.yani ? '<br><span style="font-size:11px;color:var(--muted)">＋やにとり</span>' : ""}</td><td>${yen(o.amount)}</td><td>${o.status === "施工完了" ? `<b>${yen(shopPayout(o.amount))}</b>` : `<span style="color:var(--muted)">${yen(shopPayout(o.amount))}<br><span style="font-size:10px">（完了後に確定）</span></span>`}</td><td>${paymentBadge(o.payment)}</td><td>${o.desire}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="11" style="color:var(--muted)">取次はまだありません</td></tr>`}
+          ${rows.map(o => `<tr><td><b>${o.id}</b></td><td>${o.date}</td><td>${o.customer}</td><td>${o.customerPref}${o.customerCity}</td><td>${o.car}</td><td>${o.carClass || "—"}${o.yani ? '<br><span style="font-size:11px;color:var(--muted)">＋やにとり</span>' : ""}</td><td>${yen(o.amount)}</td><td>${o.status === "施工完了" ? `<b>${yen(shopPayout(o.amount))}</b>` : `<span style="color:var(--muted)">${yen(shopPayout(o.amount))}<br><span style="font-size:10px">（完了後に確定）</span></span>`}</td><td>${paymentBadge(o.payment)}</td><td>${o.desire}</td><td>${soBadge(o.status)}</td></tr>`).join("") || `<tr><td colspan="11" style="color:var(--muted)">${list.length ? "条件に合う取次がありません" : "取次はまだありません"}</td></tr>`}
         </tbody>
       </table>
     </div>`;
