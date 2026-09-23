@@ -12,12 +12,16 @@ const PORT = process.argv[2] || 8140;
   await pg.goto(`http://localhost:${PORT}/index.html`);
 
   // ---- 0. 全ロール・全エンティティ・全ページがエラーなく描画される ----
-  const roles = await ev(() => ({ shops: shops.map(s => s.id), ops: contractors.map(c => c.id), navs: NAVS }));
+  const roles = await ev(() => ({ shops: shops.map(s => s.id), ops: contractors.map(c => c.id) }));
   for (const [role, ids] of [["hq", [null]], ["op", roles.ops], ["shop", roles.shops]]) for (const id of ids) {
     await ev(([r, i]) => login(r, i), [role, id]);
-    for (const n of roles.navs[role]) { await nav(n.id); const t = await ev(id => document.getElementById('page-' + id).innerText.length, n.id); if (t < 20) ok(false, `${role}/${id}/${n.id} renders`); }
+    // メニューは相手によって変わる（取次機能を付与した施工代理店だけ注文フォームが出る）ので、実際に出ている項目を見る
+    const navIds = await ev(() => [...document.querySelectorAll('.nav-item')].map(e => e.dataset.page));
+    for (const n of navIds) { await nav(n); const t = await ev(id => document.getElementById('page-' + id).innerText.length, n); if (t < 20) ok(false, `${role}/${id}/${n} renders`); }
     await ev(() => logout());
   }
+  ok((await ev(() => { login("op", 4); const n = [...document.querySelectorAll('.nav-item')].map(e => e.dataset.page); logout(); return n; })).includes("shop-form"), "op with 取次機能 gets 注文フォーム");
+  ok(!(await ev(() => { login("op", 1); const n = [...document.querySelectorAll('.nav-item')].map(e => e.dataset.page); logout(); return n; })).includes("shop-form"), "op without 取次機能 has no 注文フォーム");
   ok(errs.length === 0, `all pages render without errors (${errs.length})`);
 
   // ---- 1. 施工フロー：申込 → 割当 → 対応不可 → 再割当 → 対応可 → 施工前確認 → 完了 → 売上/支払 ----
@@ -153,9 +157,10 @@ const PORT = process.argv[2] || 8140;
 
   // ---- 8. スマホ幅 ----
   await pg.setViewportSize({ width: 390, height: 800 });
-  for (const [role, ids] of [["hq", [null]], ["op", [1]], ["shop", [2]]]) for (const id of ids) {
+  for (const [role, ids] of [["hq", [null]], ["op", [1, 4]], ["shop", [2]]]) for (const id of ids) {
     await ev(([r, i]) => login(r, i), [role, id]);
-    for (const n of roles.navs[role]) { await nav(n.id); const w = await ev(() => document.documentElement.scrollWidth); if (w > 391) ok(false, `mobile overflow ${role}/${n.id} (${w})`); }
+    const navIds = await ev(() => [...document.querySelectorAll('.nav-item')].map(e => e.dataset.page));
+    for (const n of navIds) { await nav(n); const w = await ev(() => document.documentElement.scrollWidth); if (w > 391) ok(false, `mobile overflow ${role}/${n} (${w})`); }
   }
   ok(true, "mobile pages checked");
   console.log('\nerrors:', errs, '\nFAILS:', fails);

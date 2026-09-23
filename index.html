@@ -270,15 +270,17 @@ const isCashOrder = o => payMethodOf(o) === "cash";
 // 各取り分をそれぞれ四捨五入すると合計が元の売上とズレるため（例：85,800円で1円不足）、
 // 振込額になる取次店・施工代理店を先に確定させ、残り全額を本部の取り分とする。
 // これにより 決済手数料 + 取次店 + 施工代理店 + 本部 = 売上 が必ず一致する。
-function splitOf(amount, method = "card") {
+// selfServed＝取次と施工が同じ会社（自社取次窓口の案件）。この場合は取次分も施工代理店の取り分になり合計90%。
+function splitOf(amount, method = "card", selfServed = false) {
   if (amount == null) return null;
   const fee = PAYMENT_METHODS[method].fee ? Math.round(amount * commissionSettings.paymentFeeRate) : 0;
   const base = amount - fee;
-  const shop = Math.round(base * commissionSettings.shopRate);
-  const contractor = Math.round(base * commissionSettings.contractorRate);
+  const shop = selfServed ? 0 : Math.round(base * commissionSettings.shopRate);
+  const rate = selfServed ? commissionSettings.contractorRate + commissionSettings.shopRate : commissionSettings.contractorRate;
+  const contractor = Math.round(base * rate);
   return { amount, fee, base, shop, contractor, hq: base - shop - contractor };
 }
-const splitOfOrder = o => splitOf(o.amount, payMethodOf(o));
+const splitOfOrder = o => splitOf(o.amount, payMethodOf(o), isSelfServed(o));
 // 複数案件の配分合計。案件ごとに計算してから足す（決済手数料は1件ごとに発生するため）
 function splitTotal(orders) {
   return orders.reduce((t, o) => {
@@ -308,14 +310,21 @@ let shops = [
   { id: 4, code: "SHOP-0004", name: "なにわ中古車市場", contractorId: 3, type: "中古車販売", contact: "藤井 健", tel: "06-444-4444", region: "大阪府", status: "稼働中", bank: { bankName: "関西みらい銀行", branchName: "難波支店", accountType: "普通", accountNumber: "4444444", accountHolder: "ﾅﾆﾜﾁｭｳｺｼｬｲﾁﾊﾞ(ｶ" }, joined: "2026-04-20" },
   { id: 5, code: "SHOP-0005", name: "神戸カー用品館", contractorId: 3, type: "パーツ販売", contact: "井上 翔", tel: "078-555-5555", region: "兵庫県", status: "稼働中", bank: { bankName: "三井住友銀行", branchName: "神戸支店", accountType: "普通", accountNumber: "5555555", accountHolder: "ｺｳﾍﾞｶｰﾖｳﾋﾝｶﾝ(ｶ" }, joined: "2026-05-08" },
   { id: 6, code: "SHOP-0006", name: "名古屋カーセレクト", contractorId: 4, type: "中古車販売", contact: "加藤 大輔", tel: "052-666-6666", region: "愛知県", status: "準備中", bank: { bankName: "三菱UFJ銀行", branchName: "名古屋支店", accountType: "普通", accountNumber: "6666666", accountHolder: "ﾅｺﾞﾔｶｰｾﾚｸﾄ(ｶ" }, joined: "2026-06-01" },
+  // selfOf: この取次窓口は施工代理店◯◯自身のもの（本部が「取次機能」を有効にすると自動で作られる）。
+  // 支払は会社単位でまとめるため、自社取次窓口には振込先を持たせない（施工代理店の口座に振り込む）。
+  { id: 7, code: "SHOP-0007", name: "東海カークリーン（自社取次）", contractorId: 4, selfOf: 4, type: "施工代理店の自社取次", contact: "山口 哲", tel: "052-000-4444", region: "愛知県", status: "稼働中", bank: null, joined: "2026-06-01" },
 ];
+// 自社取次窓口まわりの判定。取次した主体と施工した主体が同じ案件は、取次分と施工分を合算して1社に支払う。
+function selfShopOf(contractorId) { return shops.find(s => s.selfOf === contractorId); }
+function isSelfServed(o) { const s = shopById(o.shopId); return !!(s && s.selfOf && s.selfOf === o.contractorId); }
 
 // 施工代理店（本部の直下。自ら取次店を開拓・管理し、施工も担当する）
 let contractors = [
   { id: 1, name: "クリーンカーワークス東京", contact: "高橋 健", tel: "03-7777-1111", region: "関東", areas: "東京・埼玉・千葉", prefs: ["東京都", "埼玉県", "千葉県"], status: "稼働中", contractDate: "2026-02-15", renewDate: "2027-02-14", target: 300, bank: { bankName: "関西みらい銀行", branchName: "東京支店", accountType: "普通", accountNumber: "1234567", accountHolder: "ｸﾘｰﾝｶｰﾜｰｸｽﾄｳｷｮｳ(ｶ" }, demoStatus: "済", availableDays: ["月", "火", "水", "木", "金"], ngDates: ["2026-06-15"] },
   { id: 2, name: "茨城デタールサービス", contact: "渡辺 修", tel: "029-888-2222", region: "関東", areas: "茨城・栃木", prefs: ["茨城県", "栃木県"], status: "稼働中", contractDate: "2026-03-01", renewDate: "2027-02-28", target: 300, bank: { bankName: "常陽銀行", branchName: "つくば支店", accountType: "普通", accountNumber: "2345678", accountHolder: "ｲﾊﾞﾗｷﾃﾞﾀｰﾙｻｰﾋﾞｽ(ｶ" }, demoStatus: "済", availableDays: ["火", "水", "木", "金", "土"], ngDates: [] },
   { id: 3, name: "関西施工サービス", contact: "松本 浩", tel: "06-999-3333", region: "関西", areas: "大阪・兵庫・京都", prefs: ["大阪府", "兵庫県", "京都府"], status: "稼働中", contractDate: "2026-04-01", renewDate: "2027-03-31", target: 300, bank: { bankName: "関西みらい銀行", branchName: "大阪本店", accountType: "普通", accountNumber: "3456789", accountHolder: "ｶﾝｻｲｾｺｳｻｰﾋﾞｽ(ｶ" }, demoStatus: "未", availableDays: ["月", "火", "木", "金"], ngDates: ["2026-06-18", "2026-06-19"] },
-  { id: 4, name: "東海カークリーン", contact: "山口 哲", tel: "052-000-4444", region: "中部", areas: "愛知・岐阜・三重", prefs: ["愛知県", "岐阜県", "三重県"], status: "稼働中", contractDate: "2026-05-15", renewDate: "2027-05-14", target: 300, bank: { bankName: "三菱UFJ銀行", branchName: "名古屋支店", accountType: "普通", accountNumber: "4567890", accountHolder: "ﾄｳｶｲｶｰｸﾘｰﾝ(ｶ" }, demoStatus: "未", availableDays: ["月", "水", "木", "金", "土"], ngDates: [] },
+  // agency: 本部が「取次機能」を有効にした施工代理店（自社でも申し込みを受け付けられる。取次分も自社の取り分になる）
+  { id: 4, name: "東海カークリーン", contact: "山口 哲", tel: "052-000-4444", region: "中部", areas: "愛知・岐阜・三重", prefs: ["愛知県", "岐阜県", "三重県"], status: "稼働中", agency: true, contractDate: "2026-05-15", renewDate: "2027-05-14", target: 300, bank: { bankName: "三菱UFJ銀行", branchName: "名古屋支店", accountType: "普通", accountNumber: "4567890", accountHolder: "ﾄｳｶｲｶｰｸﾘｰﾝ(ｶ" }, demoStatus: "未", availableDays: ["月", "水", "木", "金", "土"], ngDates: [] },
 ];
 
 // 施工注文（取次店経由でお客さまから入る注文）
@@ -331,6 +340,9 @@ const DESIRE_TIMES = ["指定なし", "午前（9:00〜12:00）", "午後早め�
 // 希望日＋希望時間の表示（一覧・詳細で共通）
 const desireHtml = o => `${o.desire || "—"}${o.desireTime && o.desireTime !== "指定なし" ? `<br><span style="font-size:11px;color:var(--muted)">🕒 ${esc(o.desireTime)}</span>` : ""}`;
 let serviceOrders = [
+  // SO-0012：東海カークリーン（取次機能あり）が訪問先でその場で受注し、自社で施工した案件。
+  // 取次と施工が同じ会社なので取り分は 80%+10%=90%。本部の割り当ては介していない。
+  { id: "SO-0012", date: "2026-06-10", shopId: 7, customer: "杉本 様", customerTel: "052-123-4567", customerPref: "愛知県", customerCity: "名古屋市千種区", car: "ホンダ フリード", carClass: "普通", yani: false, amount: 19800, customerType: "個人", paymentMethod: "card", desire: "2026-06-10", desireTime: "午後早め（12:00〜15:00）", status: "施工完了", completedAt: "2026-06-10", contractorId: 4, scheduled: "2026-06-10", note: "ハウスクリーニングの訪問時にご案内してその場で施工" },
   // SO-0011・SO-0010：同じ法人（船橋オートサービス）の請求書払い。6月に施工完了しており、顧客請求で1枚の請求書にまとまる。
   // 同法人の SO-0008 はまだ施工完了前なので、完了した月の請求に回る。
   { id: "SO-0011", date: "2026-06-05", shopId: 1, customer: "船橋オートサービス（社用車2）", customerTel: "047-000-1111", customerPref: "千葉県", customerCity: "船橋市", car: "トヨタ ハイエース", carClass: "ワンボックス", yani: false, amount: 22000, customerType: "法人", paymentMethod: "invoice", billing: { corp: "株式会社船橋オートサービス", dept: "営業部", person: "斎藤 一郎", address: "千葉県船橋市本町1-2-3" }, desire: "2026-06-09", desireTime: "午前（9:00〜12:00）", status: "施工完了", completedAt: "2026-06-09", contractorId: 1, scheduled: "2026-06-09", note: "社用車のまとめ施工（1台目）" },
@@ -555,6 +567,10 @@ const NAVS = {
     { id: "op-dash", icon: "📊", label: "ダッシュボード" },
     { id: "op-jobs", icon: "🧰", label: "施工案件" },
     { id: "op-shop", icon: "🚙", label: "取次店管理" },
+    // 本部が「取次機能」を有効にした施工代理店だけに出る（自社で申し込みを受け付けられる）
+    // 停止しても窓口の記録は残す（過去案件の配分のため）ので、メニューの有無は agency フラグで判定する
+    { id: "shop-form", icon: "📝", label: "注文フォーム（自社取次）", when: () => !!opById(session.entityId).agency },
+    { id: "shop-qr", icon: "📱", label: "自社の専用QR", when: () => !!opById(session.entityId).agency },
     { id: "op-po", icon: "🧴", label: "消耗品注文" },
     { id: "op-contract", icon: "📄", label: "契約書" },
   ],
@@ -574,7 +590,7 @@ function entityName() {
 function buildUI() {
   const roleDef = ROLES.find(r => r.key === session.role);
   $("role-banner").innerHTML = `${roleDef.icon} ${roleDef.name}としてログイン中<b>${esc(entityName())}</b>`;
-  const navs = NAVS[session.role];
+  const navs = NAVS[session.role].filter(n => !n.when || n.when());
   $("nav-area").innerHTML = navs.map((n, i) => `<div class="nav-item ${i === 0 ? "active" : ""}" data-page="${n.id}">${n.icon} ${n.label}</div>`).join("");
   $("main").innerHTML = navs.map((n, i) => `<section class="page ${i === 0 ? "active" : ""}" id="page-${n.id}"></section>`).join("");
   $("topbar-title").textContent = navs[0].label;
@@ -595,7 +611,7 @@ function buildUI() {
 function renderAll() {
   if (session.role === "hq") { renderHqDash(); renderHqSo(); renderHqPo(); renderHqSales(); renderHqPayment(); renderHqBilling(); renderHqInvoice(); renderHqOp(); renderHqShop(); renderHqContract(); renderHqCars(); }
   if (session.role === "shop") { renderShopForm(); renderShopOrders(); renderShopQr(); }
-  if (session.role === "op") { renderOpDash(); renderOpJobs(); renderOpShop(); renderOpPo(); renderOpContract(); }
+  if (session.role === "op") { renderOpDash(); renderOpJobs(); renderOpShop(); renderOpPo(); renderOpContract(); renderShopForm(); renderShopQr(); }
 }
 
 // =====================================================
@@ -742,7 +758,7 @@ function showSoDetail(soId) {
     ${flowHtml(o.status)}
     <div class="detail-grid">
       <div class="detail-item"><div class="k">受付日</div><div class="v">${o.date}</div></div>
-      <div class="detail-item"><div class="k">取次店</div><div class="v">${esc(shop.name)}（${esc(shop.region)} / ${esc(opById(shop.contractorId).name)} 開拓）</div></div>
+      <div class="detail-item"><div class="k">取次店</div><div class="v">${esc(shop.name)}（${esc(shop.region)} / ${esc(opById(shop.contractorId).name)} 開拓）${isSelfServed(o) ? `<br><span class="badge b-purple">自社取次・自社施工</span> <span style="font-size:11px;color:var(--muted)">取次分を含め ${((commissionSettings.contractorRate + commissionSettings.shopRate) * 100).toFixed(0)}% がこの会社の取り分。本部の割り当ては不要</span>` : ""}</div></div>
       <div class="detail-item"><div class="k">お客さま</div><div class="v">${esc(o.customer)}（${esc(o.customerTel)}）</div></div>
       <div class="detail-item"><div class="k">施工場所</div><div class="v">${esc(o.customerPref)}${esc(o.customerCity)}</div></div>
       <div class="detail-item"><div class="k">車種 / 区分</div><div class="v">${esc(o.car)} / ${o.carClass || "未判定"}${o.yani ? "（＋やにとり）" : ""}</div></div>
@@ -983,9 +999,11 @@ function openQrPrintSheet(shopId) {
     ${qrSheetHtml(s)}
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">閉じる</button></div>`);
 }
+// 取次店としてログインしている場合は自店、施工代理店の場合は自社取次窓口を指す
+function currentShop() { return session.role === "shop" ? shopById(session.entityId) : selfShopOf(session.entityId); }
 function renderShopQr() {
   const el = $("page-shop-qr"); if (!el) return;
-  const s = shopById(session.entityId);
+  const s = currentShop(); if (!s) return;
   const c = opById(s.contractorId);
   el.innerHTML = `
     <div class="page-title">専用QRコード</div>
@@ -1204,14 +1222,22 @@ function payoutRows(month) {
     const jobs = so.filter(o => o.contractorId === c.id);
     const t = splitTotal(jobs);
     const cashT = splitTotal(jobs.filter(isCashOrder));
-    if (t.amount) rows.push({ type: "施工代理店", id: c.id, name: c.name, bank: c.bank, count: jobs.length, amount: t.amount, share: t.contractor,
+    // 自社取次窓口で取り次いだが、施工は他社が担当した案件。この取次分10%もこの会社に支払う
+    const self = selfShopOf(c.id);
+    const referred = self ? so.filter(o => o.shopId === self.id && o.contractorId !== c.id) : [];
+    const refT = splitTotal(referred);
+    const amount = t.amount + refT.amount;
+    if (!amount) return;
+    rows.push({ type: "施工代理店", id: c.id, name: c.name, bank: c.bank, count: jobs.length + referred.length, amount,
+      share: t.contractor + refT.shop, selfServed: jobs.filter(isSelfServed).length, referred: referred.length,
       cashCount: jobs.filter(isCashOrder).length, cashAmount: cashT.amount, cashKept: cashT.contractor, cashRemit: cashT.amount - cashT.contractor,
-      payout: t.contractor - cashT.contractor });
+      payout: t.contractor + refT.shop - cashT.contractor });
   });
-  shops.forEach(s => {
+  // 自社取次窓口は独立した支払先ではない（上の施工代理店の行に含めている）
+  shops.filter(s => !s.selfOf).forEach(s => {
     const orders = so.filter(o => o.shopId === s.id);
     const t = splitTotal(orders);
-    if (t.amount) rows.push({ type: "取次店", id: s.id, name: s.name, bank: s.bank, count: orders.length, amount: t.amount, share: t.shop, cashCount: 0, cashAmount: 0, cashKept: 0, cashRemit: 0, payout: t.shop });
+    if (t.amount) rows.push({ type: "取次店", id: s.id, name: s.name, bank: s.bank, count: orders.length, amount: t.amount, share: t.shop, selfServed: 0, referred: 0, cashCount: 0, cashAmount: 0, cashKept: 0, cashRemit: 0, payout: t.shop });
   });
   return rows;
 }
@@ -1279,9 +1305,10 @@ function renderHqPayment() {
               <td><span class="badge ${r.type === "施工代理店" ? "b-purple" : "b-blue"}">${r.type}</span></td>
               <td><b>${esc(r.name)}</b></td>
               <td style="font-size:12px">${r.bank ? `${esc(r.bank.bankName)} ${esc(r.bank.branchName)}<br><span style="color:var(--muted)">${esc(r.bank.accountType)} ${esc(r.bank.accountNumber)} ${esc(r.bank.accountHolder)}</span>` : `<span style="color:var(--danger)">未登録</span>`}</td>
-              <td>${r.count} 件${r.cashCount ? `<br><span style="font-size:11px;color:var(--warning)">うち現金 ${r.cashCount} 件</span>` : ""}</td>
+              <td>${r.count} 件${r.cashCount ? `<br><span style="font-size:11px;color:var(--warning)">うち現金 ${r.cashCount} 件</span>` : ""}${r.selfServed ? `<br><span style="font-size:11px;color:var(--purple)">うち自社取次 ${r.selfServed} 件</span>` : ""}${r.referred ? `<br><span style="font-size:11px;color:var(--muted)">他社が施工 ${r.referred} 件</span>` : ""}</td>
               <td>${yen(r.amount)}</td>
-              <td>${r.type === "施工代理店" ? (commissionSettings.contractorRate * 100).toFixed(0) : (commissionSettings.shopRate * 100).toFixed(0)}%</td>
+              <td>${r.type === "取次店" ? `${(commissionSettings.shopRate * 100).toFixed(0)}%`
+                    : `${(commissionSettings.contractorRate * 100).toFixed(0)}%${r.selfServed ? `<br><span style="font-size:11px;color:var(--purple)">自社取次分 ${((commissionSettings.contractorRate + commissionSettings.shopRate) * 100).toFixed(0)}%</span>` : ""}${r.referred ? `<br><span style="font-size:11px;color:var(--muted)">取次のみ ${(commissionSettings.shopRate * 100).toFixed(0)}%</span>` : ""}`}</td>
               <td>${yen(r.share)}${r.cashKept ? `<br><span style="font-size:11px;color:var(--muted)">現金で手元 ${yen(r.cashKept)}</span>` : ""}</td>
               <td><b>${yen(r.payout)}</b>${r.payout === 0 ? `<br><span style="font-size:11px;color:var(--muted)">振込なし</span>` : ""}</td>
             </tr>`).join("") || `<tr><td colspan="8" style="color:var(--muted)">対象月の支払はありません</td></tr>`}
@@ -1780,15 +1807,19 @@ function renderHqOp() {
   el.innerHTML = `
     <div class="page-title">施工代理店管理</div>
     <div class="page-desc">本部直下の施工代理店。取次店の開拓と施工の両方を担当します（目標10社 × 取次店300店）</div>
+    <div class="alert alert-info" style="font-size:12px">🏪 <b>取次機能</b>を付与すると、その施工代理店の画面に注文フォームと自社の専用QRが追加され、訪問先などでその場で申し込みを受けられます（ハウスクリーニング業者などのアップセル向け）。自社で受けて自社で施工した案件は、取次分を含めて <b>${((commissionSettings.contractorRate + commissionSettings.shopRate) * 100).toFixed(0)}%</b> がその会社の取り分になり、本部の割り当ては不要です。</div>
     <div class="toolbar"><div></div><button class="btn btn-primary" onclick="alert('モックのため簡略化しています（本番では登録フォームを表示）')">＋ 施工代理店を登録</button></div>
     <div class="card" style="padding:0">
       <table>
-        <thead><tr><th>代理店名</th><th>担当者</th><th>対応エリア</th><th>状態</th><th>デモ施工</th><th>開拓取次店</th><th>施工実績</th><th>消耗品購入額</th><th>契約日</th></tr></thead>
+        <thead><tr><th>代理店名</th><th>担当者</th><th>対応エリア</th><th>状態</th><th>デモ施工</th><th>取次機能</th><th>開拓取次店</th><th>施工実績</th><th>消耗品購入額</th><th>契約日</th></tr></thead>
         <tbody>
           ${contractors.map(c => `
             <tr>
               <td><b>${esc(c.name)}</b></td><td>${esc(c.contact)}</td><td>${esc(c.areas)}</td><td>${stBadge(c.status)}</td>
               <td><span class="badge clickable ${c.demoStatus === "済" ? "b-green" : "b-orange"}" onclick="toggleDemoStatus(${c.id})">${c.demoStatus}</span></td>
+              <td>${c.agency
+                ? `<span class="badge b-purple">有効</span><br><span style="font-size:11px;color:var(--muted)">${esc((selfShopOf(c.id) || {}).code || "")}</span><br><button class="btn btn-ghost btn-sm" onclick="toggleAgencyFunction(${c.id})">停止する</button>`
+                : `<button class="btn btn-ghost btn-sm" onclick="toggleAgencyFunction(${c.id})">＋ 取次機能を付与</button>`}</td>
               <td><b>${shops.filter(s => s.contractorId === c.id).length}</b> / ${c.target} 店</td>
               <td>${serviceOrders.filter(o => o.contractorId === c.id && o.status === "施工完了").length} 件</td>
               <td>${yen(supplyOrders.filter(o => o.contractorId === c.id).reduce((s, o) => s + (poAmount(o) || 0), 0))}</td>
@@ -1797,6 +1828,29 @@ function renderHqOp() {
         </tbody>
       </table>
     </div>`;
+}
+
+// 取次機能の付与・停止。付与すると自社取次窓口（QR付き）を自動で作る。
+// 停止しても窓口の記録は消さない（過去の案件の取次元と配分を壊さないため）。新規の受付だけ止める。
+function toggleAgencyFunction(id) {
+  const c = opById(id);
+  const self = selfShopOf(id);
+  if (c.agency) {
+    if (!confirm(`${c.name} の取次機能を停止しますか？\n注文フォームと自社QRが使えなくなります。過去の案件と配分はそのまま残ります。`)) return;
+    c.agency = false;
+    if (self) self.status = "停止";
+  } else {
+    if (!confirm(`${c.name} に取次機能を付与しますか？\n自社取次窓口とQRコードを作成し、その場で申し込みを受けられるようになります。`)) return;
+    c.agency = true;
+    if (self) self.status = "稼働中";
+    else shops.push({
+      id: Math.max(0, ...shops.map(s => s.id)) + 1,
+      code: nextSeqId("SHOP-", shops), name: `${c.name}（自社取次）`, contractorId: c.id, selfOf: c.id,
+      type: "施工代理店の自社取次", contact: c.contact, tel: c.tel, region: (c.prefs && c.prefs[0]) || c.region,
+      status: "稼働中", bank: null, joined: TODAY, // 支払は施工代理店の口座にまとめるため振込先は持たない
+    });
+  }
+  renderAll();
 }
 
 function toggleDemoStatus(id) {
@@ -2043,12 +2097,18 @@ function renderOpContract() {
 // =====================================================
 function renderShopForm() {
   const el = $("page-shop-form"); if (!el) return;
-  const s = shopById(session.entityId);
+  const s = currentShop(); if (!s) return;
+  // 自社取次（施工代理店が自分で受けて自分で施工する）の場合は、本部が施工店を探す猶予が要らないため
+  // 施工希望日の「3営業日後以降」の制限を外し、当日も選べるようにする
+  const self = !!s.selfOf;
+  const minDate = self ? TODAY : addBusinessDays(TODAY, 3);
   el.innerHTML = `
-    <div class="page-title">注文フォーム</div>
-    <div class="page-desc">お客さまがQRコードを読み取ると、この画面がスマホで開きます（取次店は自動セット済み）</div>
+    <div class="page-title">注文フォーム${self ? "（自社取次）" : ""}</div>
+    <div class="page-desc">${self ? "訪問先でその場でお申し込みを受けるための画面です。受け付けた案件は自動的に自社の施工案件になります" : "お客さまがQRコードを読み取ると、この画面がスマホで開きます（取次店は自動セット済み）"}</div>
     <div class="customer-form-wrap">
-      <div class="qr-banner">📱 QRコード経由のアクセスを再現しています：<br>https://（システムURL）/order?shop=<b>${esc(s.code)}</b></div>
+      ${self
+        ? `<div class="alert alert-info" style="font-size:12px">🧰 自社取次のため、<b>本部の割り当てを介さず自動的に自社の案件</b>になります（受付と同時に「施工日確定」）。施工日は<b>当日から</b>選べます。この案件の取り分は取次分を含めて <b>${((commissionSettings.contractorRate + commissionSettings.shopRate) * 100).toFixed(0)}%</b> です。</div>`
+        : `<div class="qr-banner">📱 QRコード経由のアクセスを再現しています：<br>https://（システムURL）/order?shop=<b>${esc(s.code)}</b></div>`}
       <div class="card">
         <h2 style="font-size:16px;margin-bottom:4px">🚗 車内除菌消臭の申し込み</h2>
         <div style="font-size:12px;color:var(--muted);margin-bottom:16px">受付店舗：<b style="color:var(--primary)">${esc(s.name)}</b>（自動入力・変更不要）</div>
@@ -2083,8 +2143,8 @@ function renderShopForm() {
               <input type="checkbox" id="cf-yani" onchange="updatePriceSummary()"> やにとり（タバコのヤニ除去）＋${yen(YANI_OPTION_PRICE)}
             </label>
           </div>
-          <div class="form-group"><label>施工希望日</label><input type="date" id="cf-date" min="${addBusinessDays(TODAY, 3)}" value="${addBusinessDays(TODAY, 3)}">
-            <small style="color:var(--muted);font-size:11px">申込日から3営業日後（土日祝を除く）以降からお選びいただけます</small>
+          <div class="form-group"><label>施工希望日</label><input type="date" id="cf-date" min="${minDate}" value="${minDate}">
+            <small style="color:var(--muted);font-size:11px">${self ? "自社で施工するため、当日から選べます" : "申込日から3営業日後（土日祝を除く）以降からお選びいただけます"}</small>
           </div>
           <div class="form-group"><label>訪問の希望時間</label>
             <select id="cf-time">${DESIRE_TIMES.map(t => `<option value="${t}">${t}</option>`).join("")}</select>
@@ -2165,8 +2225,9 @@ function goToPayment() {
   if (!$("cf-car").value.trim()) { alert("車種を入力してください"); return; }
   const a = currentOrderAmount();
   if (a.base == null) { alert("車両区分を選択してください"); return; }
-  const minDate = addBusinessDays(TODAY, 3);
-  if ($("cf-date").value < minDate) { alert("施工希望日は申込日から3営業日後（土日祝を除く）以降を選択してください"); return; }
+  const shop = currentShop();
+  const minDate = shop.selfOf ? TODAY : addBusinessDays(TODAY, 3);
+  if ($("cf-date").value < minDate) { alert(shop.selfOf ? "施工希望日は本日以降を選択してください" : "施工希望日は申込日から3営業日後（土日祝を除く）以降を選択してください"); return; }
   const method = $("cf-pay").value;
   if (method === "invoice" && (!$("cf-corp").value.trim() || !$("cf-person").value.trim() || !$("cf-baddr").value.trim())) {
     alert("請求書払いの場合は、法人名・ご担当者名・請求先住所を入力してください"); return;
@@ -2234,8 +2295,9 @@ function openPaymentModal(method = "card") {
 function confirmPayment(method = "card") {
   const a = currentOrderAmount();
   const id = nextSeqId("SO-", serviceOrders);
+  const shop = currentShop();
   const o = {
-    id, date: TODAY, shopId: session.entityId,
+    id, date: TODAY, shopId: shop.id,
     customer: $("cf-name").value.trim() + " 様", customerTel: $("cf-tel").value.trim(),
     customerPref: $("cf-pref").value, customerCity: $("cf-city").value.trim(), car: $("cf-car").value.trim(),
     carClass: a.cls, yani: a.yani, amount: a.total,
@@ -2243,6 +2305,8 @@ function confirmPayment(method = "card") {
     desire: $("cf-date").value, desireTime: $("cf-time").value, status: "新規受付", contractorId: null, scheduled: null,
     note: $("cf-note").value,
   };
+  // 自社取次は施工店を探す必要がないため、本部の割り当てを介さずそのまま自社の案件にする
+  if (shop.selfOf) { o.contractorId = shop.selfOf; o.status = "施工日確定"; o.scheduled = o.desire; }
   if (method === "cash") o.cashCollectedAt = null;
   if (method === "invoice") o.billing = { corp: $("cf-corp").value.trim(), dept: $("cf-dept").value.trim(), person: $("cf-person").value.trim(), address: $("cf-baddr").value.trim() };
   serviceOrders.unshift(o);
@@ -2250,7 +2314,7 @@ function confirmPayment(method = "card") {
   const paid = PAYMENT_METHODS[method].fee;
   openModal(`
     <h2>✅ ${paid ? "お支払いが完了しました" : "申し込みを受け付けました"}</h2>
-    <div class="alert alert-info">${paid ? "申し込みを受け付けました。" : ""}本部にて確認のうえ、施工担当店からご連絡いたします。<br>受付番号：<b>${id}</b>　${paid ? "お支払い金額" : method === "cash" ? "施工当日に現金でお支払い" : "請求書でのお支払い"}：<b>${yen(a.total)}</b></div>
+    <div class="alert alert-info">${paid ? "申し込みを受け付けました。" : ""}${shop.selfOf ? `自社の施工案件として登録し、施工日を <b>${o.scheduled}</b> で確定しました（本部の割り当ては不要です）。` : "本部にて確認のうえ、施工担当店からご連絡いたします。"}<br>受付番号：<b>${id}</b>　${paid ? "お支払い金額" : method === "cash" ? "施工当日に現金でお支払い" : "請求書でのお支払い"}：<b>${yen(a.total)}</b></div>
     <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">閉じる</button></div>`);
 }
 
@@ -2336,7 +2400,7 @@ function renderOpJobs() {
       </div>
     </div>
     ${monthlyTableHtml(list, "contractor")}
-    <div class="alert alert-info" style="font-size:12px">※ 「金額」はお客さまからお預かりした施工料金（税込）です。「受取見込み額」は、そこから決済代行会社の手数料（現在 ${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "・仮"}）を引いた金額の ${(commissionSettings.contractorRate * 100).toFixed(0)}%（本部${(commissionSettings.hqRate * 100).toFixed(0)}%／取次店${(commissionSettings.shopRate * 100).toFixed(0)}%／施工代理店${(commissionSettings.contractorRate * 100).toFixed(0)}%）です。<b>現金案件</b>は決済手数料がかからず、施工時に全額をお預かりするため、80%を手元に残して残り20%（本部10%＋取次店10%）を本部へお振り込みください（本部から請求書をお送りします）。お支払いは施工完了の月を月末締めの翌月払いです。</div>
+    <div class="alert alert-info" style="font-size:12px">※ 「金額」はお客さまからお預かりした施工料金（税込）です。「受取見込み額」は、そこから決済代行会社の手数料（現在 ${(commissionSettings.paymentFeeRate * 100).toFixed(1)}%${commissionSettings.paymentFeeConfirmed ? "" : "・仮"}）を引いた金額の ${(commissionSettings.contractorRate * 100).toFixed(0)}%（本部${(commissionSettings.hqRate * 100).toFixed(0)}%／取次店${(commissionSettings.shopRate * 100).toFixed(0)}%／施工代理店${(commissionSettings.contractorRate * 100).toFixed(0)}%）です。<b>自社取次</b>（自社で受けて自社で施工した案件）は取次分も自社の取り分になり <b>${((commissionSettings.contractorRate + commissionSettings.shopRate) * 100).toFixed(0)}%</b> です。<b>現金案件</b>は決済手数料がかからず、施工時に全額をお預かりするため、80%を手元に残して残り20%（本部10%＋取次店10%）を本部へお振り込みください（本部から請求書をお送りします）。お支払いは施工完了の月を月末締めの翌月払いです。</div>
     ${(() => {
       const K = "opjobs", R = "renderOpJobs";
       const G = { id: o => o.id, date: o => o.date, shop: o => shopById(o.shopId).name, amount: o => o.amount || 0, desire: o => o.desire || "", scheduled: o => o.scheduled || "", status: o => o.status,
