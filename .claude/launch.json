@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/user/AppData/Local/Temp/claude/C--Users-user-OneDrive-Desktop-Claude-Project------/d490f198-442c-49c2-b07a-0b14b620c597/scratchpad/serve.js", "8140"],
+      "port": 8140
+    }
+  ]
+}
